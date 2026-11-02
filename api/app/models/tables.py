@@ -37,6 +37,7 @@ class User(Base):
 
 class Document(Base):
     __tablename__ = "documents"
+    __table_args__ = (UniqueConstraint("user_id", "file_sha256", name="uq_documents_user_id_file_sha256"),)
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -47,6 +48,7 @@ class Document(Base):
     fact_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     sections_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     facts_dropped: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    facts_unfaithful: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     register_tx: Mapped[str | None] = mapped_column(String(66))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ingesting", server_default="ingesting")
     created_at: Mapped[datetime] = _created_at()

@@ -46,7 +46,7 @@ docker-compose.yml   Postgres 16 with pgvector
 
 ## Closed-book rules (never break these)
 1. Every chat answer, question and correct answer carries fact idx values from the `facts` table. Distractors do not need them in Review 1 (Review 2 adds the distractor gate).
-2. A fact is stored only if its quote is found in the source text (exact, or rapidfuzz partial ratio >= 90); keep page + char offsets.
+2. A fact is stored only if its quote is found in the source text (exact, or rapidfuzz partial ratio >= 90); keep page + char offsets. It must also pass `gate0_fact`: the checker model confirms the quote supports the fact (SPEC section 3).
 3. Chat answers only from retrieved facts. If best similarity < `CHAT_MIN_SIM`, abstain:
    "This isn't covered in your material" + the two nearest section headings.
 4. Generation receives only target facts chosen per SPEC section 4: unused first (not the target of any earlier quiz of this user + document, even before an attempt), then last answered wrong.

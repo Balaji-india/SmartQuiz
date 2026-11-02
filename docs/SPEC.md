@@ -7,16 +7,16 @@ If a shape here must change, change it here first, then in code, and note it in 
 | Table | Columns |
 | --- | --- |
 | users | id uuid pk, email unique, password_hash, name, created_at |
-| documents | id uuid pk, user_id fk, filename, file_sha256, fact_root (hex, nullable until ingestion finishes), fact_count int, sections_count int, facts_dropped int, register_tx (nullable), status (`ingesting`/`ready`/`failed`), created_at |
+| documents | id uuid pk, user_id fk, filename, file_sha256, fact_root (hex, nullable until ingestion finishes), fact_count int, sections_count int, facts_dropped int, facts_unfaithful int, register_tx (nullable), status (`ingesting`/`ready`/`failed`), created_at |
 | sections | id serial pk, document_id fk, parent_id nullable, heading, level int, page_start, page_end, position int |
 | facts | id serial pk, document_id fk, section_id fk, idx int (0-based, unique per document), concept, text, quote, page, char_start, char_end, text_hash (hex), leaf_hash (hex), embedding vector(384) |
 | quizzes | id uuid pk, user_id fk, document_id fk, status (`generating`/`ready`/`failed`), quiz_hash (hex, nullable until ready), salt (hex, nullable until ready), commit_tx nullable, time_limit_sec int, started_at nullable, created_at |
 | questions | id uuid pk, quiz_id fk, position int, stem, options jsonb (list of 4 strings), answer_index int, fact_idxs int[] (facts.idx values, sorted ascending), target_fact_idx int (facts.idx, always in fact_idxs), bloom_level (`remember`/`understand`), fingerprint, gate_results jsonb, dependence_score float, flagged_general bool, stem_embedding vector(384) |
 | attempts | id uuid pk, quiz_id fk, user_id fk, answers jsonb, score int, total int, time_taken_sec int, created_at |
 | fact_coverage | user_id, fact_id (facts.id), times_tested int, last_correct bool, last_bloom, updated_at — pk (user_id, fact_id) |
-| generation_log | id serial pk, document_id fk, quiz_id nullable, candidate_id uuid nullable (one per generator output), gate (`gate1`/`gate3`/`gate4`/`dup_fingerprint`/`dup_cosine`/`generator_error`), passed bool, reason text, same_family_fallback bool default false, created_at |
+| generation_log | id serial pk, document_id fk, quiz_id nullable, candidate_id uuid nullable (one per generator output), gate (`gate0_fact`/`gate1`/`gate3`/`gate4`/`dup_fingerprint`/`dup_cosine`/`generator_error`), passed bool, reason text, same_family_fallback bool default false, created_at |
 
-Indexes: HNSW on facts.embedding (cosine); unique (document_id, idx) on facts; index on questions.fingerprint.
+Indexes: HNSW on facts.embedding (cosine); unique (document_id, idx) on facts; unique (user_id, file_sha256) on documents; index on questions.fingerprint.
 
 Fact references: `questions` store `facts.idx`, `fact_coverage` stores `facts.id`. Convert through (document_id, idx); never compare the two directly.
 
@@ -52,7 +52,7 @@ GET  /verify/quiz/{quiz_id}                                 -> VerifyQuizOut
 Shapes:
 ```json
 DocumentOut = {"id":"uuid","filename":"os_ch3.pdf","status":"ready","sections_count":12,"fact_count":184,
-  "facts_dropped":9,"fact_root":"0x…","register_tx":"0x…|null","explorer_url":"https://amoy.polygonscan.com/tx/0x…|null",
+  "facts_dropped":9,"facts_unfaithful":2,"fact_root":"0x…","register_tx":"0x…|null","explorer_url":"https://amoy.polygonscan.com/tx/0x…|null",
   "chain_status":"confirmed","created_at":"iso"}
 
 SectionOut = {"id":3,"heading":"3.2 Process Scheduling","level":2,"page_start":37,"page_end":41,
@@ -85,6 +85,8 @@ MetricsOut = {"document_id":"uuid","candidates":28,"accepted":20,
   "duplicates_blocked":{"fingerprint":2,"cosine":1},"flagged_general":2,"avg_dependence":0.78,
   "repeat_rate_between_quizzes":0.0,"same_family_checker_used":false,"same_family_gate_calls":0}
   // candidates = distinct generation_log.candidate_id.
+  // gate0_fact rows belong to ingestion (candidate_id null): exclude them from rejected_by_gate and top_reasons, which describe questions.
+  // same_family_gate_calls counts them, because they are checker calls.
   // repeat_rate_between_quizzes = share of target facts that were the target in more than one of this user's quizzes for the document.
 
 VerifyQuestionOut = {"question_id":"uuid","stem":"…","document_id":"uuid","doc_id_onchain":"0x…",
@@ -104,10 +106,11 @@ Rules:
 ## 3. Ingestion (Textbook Mode)
 1. Hash the file (sha256). Same user + same hash → return the existing document (idempotent).
 2. Parse: PyMuPDF. Headings from `get_toc()`; if empty, detect by font size/bold; fallback one section per page. `.txt`: lines that look like headings (short, no full stop, numbered or Title Case) start sections.
-3. Per section, chunks of ~1500 chars → generator model → JSON list `[{"fact": str, "quote": str, "concept": str}]`.
+3. Per section, chunks of ~1500 chars → generator model → JSON `{"facts":[{"fact": str, "quote": str, "concept": str}]}` (an object, because the provider forces JSON object mode).
    - fact = one self-contained claim (understandable without the passage); quote = verbatim text copied from the chunk.
-4. Locate quote: exact `find`, else rapidfuzz `partial_ratio_alignment` ≥ 90 → char_start/char_end in section text, page from offset map. Not found → drop, count `facts_dropped`.
-5. De-duplicate facts within a document by cosine ≥ 0.95.
+4. Locate quote in its chunk: exact `find`, else rapidfuzz `partial_ratio_alignment` ≥ 90 (exact only under 20 chars) → char_start/char_end in section text (whitespace collapsed to single spaces), page from offset map. `facts.quote` stores the source span at those offsets. Not found or malformed → drop, count `facts_dropped`.
+4a. Faithfulness (`gate0_fact`): one batched checker call per chunk, on the located quotes and their facts. Input `{"items":[{"id","quote","fact"}]}`, output `{"results":[{"id","verdict":"FAITHFUL"|"NOT_FAITHFUL","reason"}]}`. NOT_FAITHFUL → drop, count `facts_unfaithful`. Each check → one `generation_log` row (`candidate_id` and `quiz_id` null). Missing verdicts → retry once with attempt = 1, then treated as NOT_FAITHFUL. A wrong-shaped reply twice → the document is `failed`.
+5. De-duplicate facts within a document by cosine ≥ 0.95, keeping the first in reading order. Not counted in `facts_dropped`.
 6. idx assigned 0..n-1 in reading order. text_hash, leaf, embedding. Merkle root over leaves per section 8. Zero facts → status `failed`.
 7. Attempt chain registration, then set status `ready`. Failure does not block: register_tx stays null, `status` is still `ready`, `chain_status` is `offline`.
 

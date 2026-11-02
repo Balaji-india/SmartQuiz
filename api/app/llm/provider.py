@@ -24,6 +24,9 @@ CACHE_PATH: Path = API_DIR / ".cache" / "llm.sqlite"
 MAX_RETRIES = 5
 JSON_ONLY = "Return valid JSON only. No prose and no code fences."
 _FENCE = re.compile(r"^\s*```[a-zA-Z]*\s*|\s*```\s*$")
+# Prompts carry these markers so FAKE mode knows which reply shape to produce.
+TASK_EXTRACT_FACTS = "[task:extract_facts]"
+TASK_CHECK_FAITHFULNESS = "[task:check_faithfulness]"
 
 
 class LLMError(RuntimeError):
@@ -152,8 +155,29 @@ def _chat(role: str, cfg: RoleConfig, system: str, user: str) -> str:
     raise AssertionError("unreachable")
 
 
+def _fake_extract_facts(passage: str) -> dict:
+    # Each sentence of five or more words becomes a fact quoting itself.
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", passage)]
+    return {
+        "facts": [
+            {"fact": s, "quote": s, "concept": " ".join(s.split()[:3])}
+            for s in sentences
+            if len(s.split()) >= 5
+        ]
+    }
+
+
+def _fake_check_faithfulness(user: str) -> dict:
+    items = json.loads(user)["items"]
+    return {"results": [{"id": i["id"], "verdict": "FAITHFUL", "reason": "fake"} for i in items]}
+
+
 def _fake(role: str, system: str, user: str, attempt: int) -> dict:
     """Deterministic offline stand-in. Later commands extend it for their prompts."""
+    if TASK_EXTRACT_FACTS in system:
+        return _fake_extract_facts(user)
+    if TASK_CHECK_FAITHFULNESS in system:
+        return _fake_check_faithfulness(user)
     return {"fake": True, "role": role, "attempt": attempt}
 
 
