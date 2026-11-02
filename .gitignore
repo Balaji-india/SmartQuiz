@@ -1,0 +1,14 @@
+.env
+.env.local
+.env*.local
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+api/.cache/
+node_modules/
+.next/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+.DS_Store

@@ -1,0 +1,23 @@
+# CPU-only PyTorch: install this index's torch BEFORE sentence-transformers, so no GPU files are downloaded.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+fastapi
+uvicorn[standard]
+sqlalchemy>=2
+alembic
+psycopg[binary]
+pgvector
+pydantic-settings
+python-multipart
+pyjwt
+argon2-cffi
+openai
+sentence-transformers
+pymupdf
+rapidfuzz
+web3
+eth-abi
+numpy
+reportlab
+pytest
+httpx
