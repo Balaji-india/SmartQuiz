@@ -19,9 +19,14 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     checker_base_url: str = ""
     llm_checker_model: str = ""
-    generator_rpm: int = 8
+    generator_rpm: int = 25
+    generator_tpm: int = 8000
+    generator_requests_per_day: int = 1000
+    generator_max_tokens: int = 0  # 0 = the provider's default
     checker_rpm: int = 25
-    checker_tpm: int = 7000
+    checker_tpm: int = 8000
+    checker_requests_per_day: int = 1000
+    checker_max_tokens: int = 1000  # Groq free tier limits the checker model to 1000 output tokens per minute
 
     database_url: str = "postgresql+psycopg://smartquiz:smartquiz@localhost:5432/smartquiz"
     jwt_secret: str = ""

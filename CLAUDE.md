@@ -35,10 +35,10 @@ docker-compose.yml   Postgres 16 with pgvector
 
 ## Stack decisions (do not change without the team)
 - LLM: FREE tiers only, both called through OpenAI-compatible endpoints with the `openai` Python SDK in `app/llm/provider.py`
-  - generator: Google Gemini free tier (`GEMINI_API_KEY`, `GENERATOR_BASE_URL`, `LLM_GENERATOR_MODEL`)
-  - checker (gates): Groq free tier (`GROQ_API_KEY`, `CHECKER_BASE_URL`, `LLM_CHECKER_MODEL`) — a different model family from the generator on purpose. A same-family checker is an emergency-only fallback and must show on the metrics page (SPEC section 4).
-  - Model names change often: never hard-code them; read them from .env. `provider.py` throttles to GENERATOR_RPM / CHECKER_RPM / CHECKER_TPM and retries on HTTP 429 with backoff. It caches by sha256(role + model + system + user + attempt) in a sqlite file in api/.cache, so a regeneration (higher attempt number) gets a new response and re-runs cost nothing. FAKE responses are never cached.
-  - Free Gemini tier may use inputs to improve Google products: only upload course notes, never personal data.
+  - generator: Groq free tier, OpenAI family (`GROQ_API_KEY`, `GENERATOR_BASE_URL`, `LLM_GENERATOR_MODEL`). Gemini stays configurable as an optional generator (`GEMINI_API_KEY`), but its free tier can be as low as 20 requests/day.
+  - checker (gates): Groq free tier, Qwen family (`GROQ_API_KEY`, `CHECKER_BASE_URL`, `LLM_CHECKER_MODEL`) — a different model family from the generator on purpose. Independence is by model family, not vendor. A same-family checker is an emergency-only fallback and must show on the metrics page (SPEC section 4).
+  - Model names change often: never hard-code them; read them from .env. `provider.py` throttles to the RPM / TPM values per role, retries per-minute 429s with backoff, and counts requests against GENERATOR_REQUESTS_PER_DAY / CHECKER_REQUESTS_PER_DAY. A daily limit stops immediately with no retries. It caches by sha256(role + model + system + user + attempt) in a sqlite file in api/.cache, so a regeneration (higher attempt number) gets a new response and re-runs cost nothing. FAKE responses are never cached.
+  - Upload only course notes to LLM providers, never personal data; free tiers may use inputs to improve their products.
 - Embeddings: local `BAAI/bge-small-en-v1.5` (sentence-transformers), 384 dims, pgvector
 - Chain: Polygon Amoy testnet (chain id 80002), one server issuer wallet signs every tx, learners need no wallet
 - Auth: simple email + password (argon2-cffi), JWT bearer tokens
@@ -53,7 +53,7 @@ docker-compose.yml   Postgres 16 with pgvector
    Coverage tracks the target fact only (`questions.target_fact_idx`). fingerprint per SPEC section 4, unique per user + document.
    Backup: drop a question whose stem embedding has cosine >= 0.85 with an earlier stem for that user + document.
 5. Gates (checker model only): Gate 1 grounding, Gate 3 solvability, Gate 4 document dependence (see SPEC).
-   Gate 1 or 3 fails → regenerate up to 2 times, then drop. Log every gate result to `generation_log`.
+   One generator call writes all target questions; Gate 1 or 3 failures share one batched regeneration call, then drop. Log every gate result to `generation_log`.
 6. Only hashes go on chain. Never document text, names or emails.
 7. Sources stay hidden until submit: `QuizOut` omits `fact_idxs` and Source chips stay hidden until the attempt is submitted; `/verify/question` answers 409 until then.
 
@@ -74,8 +74,8 @@ Shortcut: `powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 <db|api|we
 - Never rely on venv activation, `make`, `python3`, or bare `npx`/`npm`. Open text files with explicit `encoding="utf-8"`.
 
 ## Env (never commit `.env`; keep `.env.example` current)
-GEMINI_API_KEY, GENERATOR_BASE_URL, LLM_GENERATOR_MODEL, GROQ_API_KEY, CHECKER_BASE_URL, LLM_CHECKER_MODEL,
-GENERATOR_RPM, CHECKER_RPM, CHECKER_TPM, DATABASE_URL, JWT_SECRET, AMOY_RPC_URL,
+GROQ_API_KEY, GENERATOR_BASE_URL, LLM_GENERATOR_MODEL, CHECKER_BASE_URL, LLM_CHECKER_MODEL, GEMINI_API_KEY (optional),
+GENERATOR_RPM, GENERATOR_TPM, GENERATOR_REQUESTS_PER_DAY, CHECKER_RPM, CHECKER_TPM, CHECKER_REQUESTS_PER_DAY, DATABASE_URL, JWT_SECRET, AMOY_RPC_URL,
 ISSUER_PRIVATE_KEY (testnet only), REGISTRY_ADDRESS, CHAIN_OPTIONAL, CHAT_MIN_SIM, NEXT_PUBLIC_API_URL
 Settings load the ROOT `.env` by absolute path with `extra="ignore"`, whatever the working directory.
 `CHAIN_OPTIONAL=false` for the live demo, so chain failures cannot pass silently.

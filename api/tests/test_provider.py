@@ -1,7 +1,10 @@
 """Offline: the network call is stubbed, and the cache is a temp file."""
 import sqlite3
+from types import SimpleNamespace
 
+import httpx
 import pytest
+from openai import APIStatusError
 
 from app.llm import provider
 from app.llm.provider import RoleConfig
@@ -126,6 +129,169 @@ def test_throttle_enforces_rpm(monkeypatch):
     for _ in range(3):
         throttle.acquire(10)
     assert clock["t"] >= 60
+
+
+def test_throttle_counts_the_settled_tokens(monkeypatch):
+    clock = {"t": 0.0}
+    monkeypatch.setattr(provider.time, "monotonic", lambda: clock["t"])
+    monkeypatch.setattr(provider.time, "sleep", lambda s: clock.__setitem__("t", clock["t"] + s))
+    throttle = provider._Throttle(rpm=100, tpm=1000)
+    entry = throttle.acquire(100)
+    throttle.settle(entry, 950)
+    throttle.acquire(100)
+    assert clock["t"] >= 60
+
+
+class _Completions:
+    """Plays back replies: an exception to raise, or text to return."""
+
+    def __init__(self, replies):
+        self.replies = list(replies)
+        self.count = 0
+
+    def create(self, **kwargs):
+        self.count += 1
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        message = SimpleNamespace(content=reply)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=SimpleNamespace(total_tokens=10))
+
+
+def _status_error(status: int, body: str, headers: dict | None = None) -> APIStatusError:
+    request = httpx.Request("POST", "http://invalid.test")
+    response = httpx.Response(status, text=body, headers=headers or {}, request=request)
+    return APIStatusError("error", response=response, body=None)
+
+
+@pytest.fixture
+def api(cache, monkeypatch):
+    """Real _chat with a stubbed HTTP client. sleep() records instead of waiting."""
+    monkeypatch.setattr(provider, "_throttles", {})
+    sleeps = []
+    monkeypatch.setattr(provider.time, "sleep", sleeps.append)
+
+    def install(replies, budget=0):
+        cfg = RoleConfig("k", "http://invalid.test", "m", 1000, None, budget)
+        monkeypatch.setattr(provider, "role_config", lambda role: cfg)
+        completions = _Completions(replies)
+        client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+        monkeypatch.setattr(provider, "_client", lambda role, cfg: client)
+        return completions, sleeps
+
+    return install
+
+
+@pytest.mark.parametrize(
+    "body, headers",
+    [
+        ("Rate limit reached for model on tokens per day (TPD): Limit 200000", None),
+        ("Rate limit reached for model on requests per day (RPD): Limit 1000", None),
+        ('{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}', None),
+        ("rate limited", {"retry-after": "7200"}),
+    ],
+)
+def test_daily_limit_stops_with_no_retry(api, body, headers):
+    completions, sleeps = api([_status_error(429, body, headers), '{"never": "reached"}'])
+    with pytest.raises(provider.DailyLimitError, match="daily limit"):
+        provider.generate_json("generator", "s", "u")
+    assert completions.count == 1
+    assert sleeps == []
+
+
+def test_per_minute_limit_waits_as_told_and_retries(api):
+    error = _status_error(429, "Rate limit reached on tokens per minute (TPM)", {"retry-after": "7"})
+    completions, sleeps = api([error, '{"ok": true}'])
+    assert provider.generate_json("generator", "s", "u") == {"ok": True}
+    assert completions.count == 2
+    assert sleeps == [7.0]
+
+
+def test_failed_json_mode_is_retried(api):
+    completions, _ = api([_status_error(400, '{"error":{"code":"json_validate_failed"}}'), '{"ok": true}'])
+    assert provider.generate_json("generator", "s", "u") == {"ok": True}
+    assert completions.count == 2
+
+
+def test_request_too_large_is_not_retried(api):
+    error = _status_error(429, "Request too large for model on output tokens per minute (OTPM): Limit 1000")
+    completions, sleeps = api([error, '{"never": "reached"}'])
+    with pytest.raises(provider.LLMError, match="larger than a per-minute limit"):
+        provider.generate_json("checker", "s", "u")
+    assert completions.count == 1 and sleeps == []
+
+
+def test_other_client_errors_are_not_retried(api):
+    completions, _ = api([_status_error(401, "bad key"), '{"never": "reached"}'])
+    with pytest.raises(provider.LLMError) as caught:
+        provider.generate_json("generator", "s", "u")
+    assert not isinstance(caught.value, provider.DailyLimitError)
+    assert completions.count == 1
+
+
+def test_requests_are_counted_and_cache_hits_are_not(api):
+    api(['{"a": 1}', '{"b": 2}'])
+    provider.generate_json("generator", "s", "u")
+    provider.generate_json("generator", "s", "u")  # cache hit
+    assert provider.requests_used("generator") == 1
+    provider.generate_json("generator", "s", "other")
+    assert provider.requests_used("generator") == 2
+
+
+def test_retries_count_as_requests(api):
+    api([_status_error(500, "oops"), '{"ok": true}'])
+    provider.generate_json("generator", "s", "u")
+    assert provider.requests_used("generator") == 2
+
+
+def test_budget_stops_before_sending(api):
+    completions, _ = api(['{"a": 1}', '{"b": 2}'], budget=1)
+    provider.generate_json("generator", "s", "one")
+    with pytest.raises(provider.DailyLimitError, match="budget"):
+        provider.generate_json("generator", "s", "two")
+    assert completions.count == 1
+    assert provider.requests_used("generator") == 1
+
+
+def test_counter_starts_fresh_each_day(api, monkeypatch):
+    api(['{"a": 1}'])
+    provider.generate_json("generator", "s", "u")
+    monkeypatch.setattr(provider, "_today", lambda: "2099-01-01")
+    assert provider.requests_used("generator") == 0
+
+
+@pytest.mark.parametrize(
+    "model, family",
+    [
+        ("openai/gpt-oss-120b", "openai"),
+        ("qwen/qwen3.8-27b", "qwen"),
+        ("gemini-3.6-flash", "gemini"),
+        ("models/gemini-3.6-flash", "gemini"),
+    ],
+)
+def test_model_family(model, family):
+    assert provider.model_family(model) == family
+
+
+def test_generator_key_follows_its_base_url(monkeypatch):
+    settings = provider.get_settings()
+    monkeypatch.setattr(settings, "gemini_api_key", "gemini")
+    monkeypatch.setattr(settings, "groq_api_key", "groq")
+    monkeypatch.setattr(settings, "generator_base_url", "https://api.groq.com/openai/v1")
+    assert provider.role_config("generator").api_key == "groq"
+    monkeypatch.setattr(settings, "generator_base_url", "https://generativelanguage.googleapis.com/v1beta/openai/")
+    assert provider.role_config("generator").api_key == "gemini"
+
+
+def test_same_vendor_different_family_keeps_independence(monkeypatch):
+    settings = provider.get_settings()
+    monkeypatch.setattr(settings, "generator_base_url", "https://api.groq.com/openai/v1")
+    monkeypatch.setattr(settings, "checker_base_url", "https://api.groq.com/openai/v1")
+    monkeypatch.setattr(settings, "llm_generator_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(settings, "llm_checker_model", "qwen/qwen3.8-27b")
+    assert provider.same_family_checker() is False
+    monkeypatch.setattr(settings, "llm_checker_model", "openai/gpt-oss-20b")
+    assert provider.same_family_checker() is True
 
 
 def test_throttle_enforces_tpm(monkeypatch):

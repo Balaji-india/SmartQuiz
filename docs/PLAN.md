@@ -13,7 +13,7 @@ Budget: ~23 working hours, one operator, one sequence. Detailed shapes are in `d
 | Headline claim | Proof of Grounding: each question is provably derived from a fact of your document, verified, and committed on chain |
 | Data foundation | Textbook Mode: document → sections → concepts → atomic facts with exact spans and hashes |
 | Review 1 scope | Auth, upload, Textbook Mode (A1), gates 1+3 (A2), dependence score (A3), coverage-based no-repeat generation (A4), timed quiz + scoring, closed-book chat (A8), on-chain doc root (B1), quiz commit (B2), Verify page (B5), metrics (A12) |
-| LLM | Free tiers, no card: generator = Google Gemini (AI Studio key), checker = Groq, different model families on purpose; model names live only in .env, swappable through `app/llm/provider.py` |
+| LLM | Free tiers, no card: generator and checker both on Groq, different model families on purpose (Gemini is an optional generator); model names live only in .env, swappable through `app/llm/provider.py` |
 | Embeddings | Local `BAAI/bge-small-en-v1.5`, 384 dims |
 | Wallet | One server issuer wallet; learners need no wallet in Review 1 |
 | Chain | Polygon Amoy testnet; local Hardhat node as fallback |
@@ -70,8 +70,8 @@ Run with `CHAIN_OPTIONAL=false`, so a chain failure cannot pass silently.
 - PDF without a table of contents → font-size headings, worst case one section per page.
 - Slow ingestion → demo a 15–30 page chapter, ingest it before the review (upload is idempotent).
 - Gates reject too much → show it as evidence on the metrics page; improve the generator prompt, not the gates.
-- Free-tier rate limits (Gemini ~10 requests/min, Groq ~8k tokens/min) → provider throttles and caches by input hash; ingest the demo PDF and pre-generate quiz 1 before the review so nothing waits on stage.
-- Groq daily cap → emergency only: point the checker at a second Gemini model (SPEC section 4). This weakens checker independence, so the metrics page shows a warning. Revert it before the demo if possible; if not, say so on stage.
+- Free-tier rate limits (Groq ~25 requests/min, 8k tokens/min, 1000 requests/day per model) → provider throttles, counts requests and caches by input hash; ingest the demo PDF and pre-generate quiz 1 before the review so nothing waits on stage.
+- Groq daily cap → work stops with a clear error, and cached work is kept. Both roles depend on one vendor and key, so a Groq outage stops both. Emergency only: a same-family checker (SPEC section 4) weakens independence, so the metrics page shows a warning. Revert it before the demo if possible; if not, say so on stage.
 
 ## After Review 1 (Review 2 / final)
 Distractor-falsity gate with fact IDs on distractors, Bloom's ladder, misconception-tagged distractors, BKT mastery + gap report, revision notes,

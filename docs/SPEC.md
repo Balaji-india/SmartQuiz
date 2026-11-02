@@ -106,10 +106,11 @@ Rules:
 ## 3. Ingestion (Textbook Mode)
 1. Hash the file (sha256). Same user + same hash → return the existing document (idempotent).
 2. Parse: PyMuPDF. Headings from `get_toc()`; if empty, detect by font size/bold; fallback one section per page. `.txt`: lines that look like headings (short, no full stop, numbered or Title Case) start sections.
-3. Per section, chunks of ~1500 chars → generator model → JSON `{"facts":[{"fact": str, "quote": str, "concept": str}]}` (an object, because the provider forces JSON object mode).
+   Skipped while parsing: page footers matching `N / N`, and text under the headings in `SKIPPED_HEADINGS` (`app/ingest/prompts.py`), up to the next bold line at least as large as that heading.
+3. Consecutive sections are packed into chunks of up to 6000 chars (a longer section is split at sentence ends), to save requests → one generator call per chunk → JSON `{"facts":[{"fact": str, "quote": str, "concept": str}]}` (an object, because the provider forces JSON object mode).
    - fact = one self-contained claim (understandable without the passage); quote = verbatim text copied from the chunk.
-4. Locate quote in its chunk: exact `find`, else rapidfuzz `partial_ratio_alignment` ≥ 90 (exact only under 20 chars) → char_start/char_end in section text (whitespace collapsed to single spaces), page from offset map. `facts.quote` stores the source span at those offsets. Not found or malformed → drop, count `facts_dropped`.
-4a. Faithfulness (`gate0_fact`): one batched checker call per chunk, on the located quotes and their facts. Input `{"items":[{"id","quote","fact"}]}`, output `{"results":[{"id","verdict":"FAITHFUL"|"NOT_FAITHFUL","reason"}]}`. NOT_FAITHFUL → drop, count `facts_unfaithful`. Each check → one `generation_log` row (`candidate_id` and `quiz_id` null). Missing verdicts → retry once with attempt = 1, then treated as NOT_FAITHFUL. A wrong-shaped reply twice → the document is `failed`.
+4. Locate quote in its chunk: exact `find`, else rapidfuzz `partial_ratio_alignment` ≥ 90 (exact only under 20 chars) → char_start/char_end in section text (whitespace collapsed to single spaces), page from offset map. `facts.quote` stores the source span at those offsets. Not found, malformed, or crossing two sections → drop, count `facts_dropped`.
+4a. Faithfulness (`gate0_fact`): one batched checker call per chunk, on the located quotes and their facts. Input `{"items":[{"id","quote","fact"}]}`, output `{"faithful":[id],"not_faithful":[{"id","reason"}]}` (compact, to fit the checker's 1000 output tokens per minute; only rejections carry a reason). NOT_FAITHFUL → drop, count `facts_unfaithful`. Each check → one `generation_log` row (`candidate_id` and `quiz_id` null). Missing verdicts → retry once with attempt = 1, then treated as NOT_FAITHFUL. A wrong-shaped reply twice → the document is `failed`.
 5. De-duplicate facts within a document by cosine ≥ 0.95, keeping the first in reading order. Not counted in `facts_dropped`.
 6. idx assigned 0..n-1 in reading order. text_hash, leaf, embedding. Merkle root over leaves per section 8. Zero facts → status `failed`.
 7. Attempt chain registration, then set status `ready`. Failure does not block: register_tx stays null, `status` is still `ready`, `chain_status` is `offline`.
@@ -139,14 +140,18 @@ Distractors must be plausible and must not be true according to the cited facts.
 
 dependence_score = 1 − (confidence/100 if blind choice correct else 0). `flagged_general = dependence_score < 0.3`.
 Duplicate checks after gates: fingerprint, then cosine ≥ 0.85 vs earlier stems (same user + document).
-Gate 1 or 3 fails → regenerate for the same target with attempt = 1, then 2 (max 2 retries; the attempt number is part of the LLM cache key) → else drop, take next fact.
+Request budget: all target questions come from ONE generator call (attempt = 0). Targets that fail Gate 1 or 3 share ONE batched regeneration call (attempt = 1; the attempt number is part of the LLM cache key); a target that fails again is dropped. To end up with N questions, the first call may request spare targets beyond N.
 Checker responses are JSON with a short `reason`. Every gate call → one `generation_log` row.
 
 `gate_results` (integers only, no floats, so the hash is stable):
 `{"gate1":{"verdict":"SUPPORTED","reason":"…"},"gate3":{"passed":true,"choice":1,"reason":"…"},"gate4":{"choice":1,"confidence":40,"reason":"…"}}`
 `choice` is the index in the stored option order, mapped back from any shuffle.
 
-Same-family fallback (emergency only, when Groq hits its daily cap): set CHECKER_BASE_URL to the Gemini URL, LLM_CHECKER_MODEL to a second Gemini model, and put the Gemini key in GROQ_API_KEY. Gate calls where the CHECKER_BASE_URL host equals the GENERATOR_BASE_URL host are logged with `same_family_fallback=true`, and the metrics page shows a warning banner with the count. Revert it before the demo if possible; if not, say so on stage.
+Checker independence depends on the model family, not the vendor: generator and checker both run on Groq, using `openai/gpt-oss-120b` and `qwen/qwen3.8-27b`. Family = the model id before `/`, otherwise before the first `-` (`provider.model_family`).
+
+Same-family fallback (emergency only): if the checker must use a model of the generator's family, gate calls are logged with `same_family_fallback=true`, and the metrics page shows a warning banner with the count. Revert it before the demo if possible; if not, say so on stage. Gemini remains an optional generator: set GENERATOR_BASE_URL to its URL and LLM_GENERATOR_MODEL to a Gemini model, and `provider.py` uses GEMINI_API_KEY.
+
+Limits (`provider.py`): each role has RPM, TPM and REQUESTS_PER_DAY in `.env`. Every network request, including retries, counts against the day's budget (UTC, per role and model, in `api/.cache/llm.sqlite`); cache hits do not. Budget spent, or a provider reporting a daily limit → `DailyLimitError` at once with no retries. Per-minute 429s wait and retry, honouring `Retry-After`.
 
 ## 5. Chat
 Embed message → top 8 facts by cosine (same document). best < CHAT_MIN_SIM → abstain with 2 nearest section headings (by section-heading embedding or by the sections of the top facts).

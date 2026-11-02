@@ -98,11 +98,136 @@ def test_page_at_uses_the_offset_map():
     assert section.page_at(section.text.index("A context switch")) == 2
 
 
+def _styled_pdf(lines: list[list[tuple[str, int, str]]]) -> bytes:
+    """Each page is a list of (text, font size, font name)."""
+    doc = pymupdf.open()
+    for page_lines in lines:
+        page = doc.new_page()
+        y = 72
+        for line, size, font in page_lines:
+            page.insert_text((72, y), line, fontsize=size, fontname=font)
+            y += size + 8
+    return doc.tobytes()
+
+
+REAL = "Real notes stay in the section text."
+TRICK = "Questions like this must not become facts."
+
+
+def _revision_pdf(heading="How they'll ask it") -> bytes:
+    return _styled_pdf(
+        [
+            [
+                ("Topic One", 14, "hebo"),
+                (REAL, 11, "helv"),
+                (heading, 14, "hebo"),
+                (TRICK, 11, "helv"),
+                ("Bold label inside", 11, "hebo"),
+                ("Quick recall", 14, "hebo"),
+                ("1. What is this?", 11, "helv"),
+                ("5 / 122", 7, "helv"),
+            ],
+            [
+                ("Still recall text on the next page.", 11, "helv"),
+                ("Topic Two", 14, "hebo"),
+                ("Second topic notes are kept as well.", 11, "helv"),
+            ],
+        ]
+    )
+
+
+def test_skipped_blocks_end_at_the_next_heading_even_across_pages():
+    first, second = parser.parse_pdf(_revision_pdf())
+    assert (first.heading, second.heading) == ("Topic One", "Topic Two")
+    assert first.text == REAL
+    assert second.text == "Second topic notes are kept as well."
+
+
+def test_skipped_heading_matches_curly_apostrophe_and_case():
+    assert parser._is_skipped_heading("How they’ll ask it")
+    first, _ = parser.parse_pdf(_revision_pdf("HOW THEY'LL ASK IT"))
+    assert first.text == REAL
+
+
+def test_skipped_list_is_configurable(monkeypatch):
+    monkeypatch.setattr(parser, "SKIPPED_HEADINGS", ("Exam Trap",))
+    first, *_ = parser.parse_pdf(_revision_pdf("Exam Trap"))
+    assert TRICK not in first.text
+    assert "1. What is this?" in " ".join(s.text for s in parser.parse_pdf(_revision_pdf("Exam Trap")))
+
+
+def test_page_footers_are_stripped_but_similar_text_stays():
+    sections = parser.parse_pdf(_pdf(["Notes say the ratio 3 / 4 matters here.\n5 / 122", "More notes follow.\n6 / 122"]))
+    assert sections[0].text == "Notes say the ratio 3 / 4 matters here."
+    assert "122" not in sections[1].text
+
+
+def test_txt_skips_blocks_and_footers():
+    data = (
+        "1 Memory\n\nPaging uses frames of a fixed size in memory.\n7 / 9\n\n"
+        "Quick recall\n\n1. What is paging?\n\n2 Disks\n\nDisks store blocks of data for a long time.\n"
+    ).encode("utf-8")
+    first, second = parser.parse_document("notes.txt", data)
+    assert first.text == "Paging uses frames of a fixed size in memory."
+    assert (second.heading, second.text) == ("2 Disks", "Disks store blocks of data for a long time.")
+
+
 # --- Chunking and locating ---
 
 
+def _sections(*texts: str) -> list[parser.ParsedSection]:
+    return [
+        parser.ParsedSection(f"S{i}", 1, i, 1, 1, text, page_map=[(0, 1)]) for i, text in enumerate(texts)
+    ]
+
+
+def test_small_sections_share_a_chunk_and_map_back():
+    sections = _sections("Alpha text here.", "Beta text here.", "Gamma text here.")
+    chunks = extractor.pack_chunks(sections, size=40)
+    assert [len(c.pieces) for c in chunks] == [2, 1]
+    assert chunks[0].text == f"Alpha text here.{extractor.SECTION_SEPARATOR}Beta text here."
+
+    start = chunks[0].text.index("Beta")
+    assert chunks[0].to_section(start, start + 4) == (1, 0, 4)
+    assert chunks[1].to_section(0, 5) == (2, 0, 5)
+
+
+def test_span_crossing_sections_does_not_map():
+    chunk = extractor.pack_chunks(_sections("Alpha text here.", "Beta text here."))[0]
+    assert chunk.to_section(10, 25) is None
+
+
+def test_quote_crossing_two_sections_is_dropped(monkeypatch):
+    raw = extractor.RawFact("A fact.", "Alpha text here. Beta text here.", "C")
+    monkeypatch.setattr(pipeline, "extract_facts", lambda chunk: ([raw], 0))
+    chunk = extractor.pack_chunks(_sections("Alpha text here.", "Beta text here."))[0]
+    kept, checks, dropped, _ = pipeline._extract_chunk(chunk, _sections("Alpha text here.", "Beta text here."))
+    assert (kept, checks, dropped) == ([], [], 1)
+
+
+def test_oversized_section_spans_several_chunks_in_order():
+    long_text = " ".join(f"Sentence number {i} says something about the topic." for i in range(300))
+    chunks = extractor.pack_chunks(_sections("Short start here.", long_text))
+    assert len(chunks) > 1
+    assert all(len(c.text) <= extractor.CHUNK_CHARS for c in chunks)
+    rebuilt = " ".join(
+        long_text[p.start : p.end] for c in chunks for p in c.pieces if p.section_position == 1
+    )
+    assert rebuilt == long_text
+
+
+def test_one_checker_call_per_chunk(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        pipeline, "check_faithfulness", lambda pairs: calls.append(len(pairs)) or [extractor.Verdict(True, "ok")] * len(pairs)
+    )
+    run_ingestion("notes.txt", NOTES)
+    assert calls == [2]  # two sections, one chunk, one batch
+
+
+
 def test_chunks_cover_the_text_in_order_and_end_at_sentences():
-    text_ = " ".join(f"Sentence number {i} says something about the topic." for i in range(200))
+    text_ = " ".join(f"Sentence number {i} says something about the topic." for i in range(600))
     spans = extractor.chunk_spans(text_)
     assert len(spans) > 1
     assert all(end - start <= extractor.CHUNK_CHARS for start, end in spans)
@@ -186,7 +311,7 @@ def _checker_replies(monkeypatch, *replies):
 def test_check_uses_the_checker_once_per_batch(monkeypatch):
     calls = _checker_replies(
         monkeypatch,
-        {"results": [{"id": 0, "verdict": "FAITHFUL", "reason": "ok"}, {"id": 1, "verdict": "NOT_FAITHFUL", "reason": "adds"}]},
+        {"faithful": [0], "not_faithful": [{"id": 1, "reason": "adds"}]},
     )
     verdicts = extractor.check_faithfulness([("q0", "f0"), ("q1", "f1")])
     assert calls == [("checker", 0)]
@@ -195,7 +320,7 @@ def test_check_uses_the_checker_once_per_batch(monkeypatch):
 
 
 def test_missing_verdict_retries_then_fails_closed(monkeypatch):
-    partial = {"results": [{"id": 0, "verdict": "FAITHFUL", "reason": "ok"}]}
+    partial = {"faithful": [0], "not_faithful": []}
     calls = _checker_replies(monkeypatch, partial, partial)
     verdicts = extractor.check_faithfulness([("q0", "f0"), ("q1", "f1")])
     assert calls == [("checker", 0), ("checker", 1)]
@@ -203,9 +328,16 @@ def test_missing_verdict_retries_then_fails_closed(monkeypatch):
     assert verdicts[1].reason == extractor.NO_VERDICT_REASON
 
 
-def test_unknown_verdict_word_counts_as_rejection(monkeypatch):
-    _checker_replies(monkeypatch, {"results": [{"id": 0, "verdict": "MOSTLY_FAITHFUL", "reason": "?"}]})
+def test_id_in_both_lists_counts_as_rejection(monkeypatch):
+    _checker_replies(monkeypatch, {"faithful": [0], "not_faithful": [{"id": 0, "reason": "?"}]})
     assert not extractor.check_faithfulness([("q", "f")])[0].faithful
+
+
+def test_first_rejection_survives_a_retry(monkeypatch):
+    first = {"faithful": [], "not_faithful": [{"id": 0, "reason": "adds"}]}
+    _checker_replies(monkeypatch, first, {"faithful": [0, 1], "not_faithful": []})
+    verdicts = extractor.check_faithfulness([("q0", "f0"), ("q1", "f1")])
+    assert [v.faithful for v in verdicts] == [False, True]
 
 
 def test_wrong_shape_from_checker_raises_after_retry(monkeypatch):
@@ -263,11 +395,23 @@ def test_unfaithful_fact_shows_in_document_and_log(client, test_engine, monkeypa
 
 def test_same_family_checker_is_flagged_in_the_log(client, test_engine, monkeypatch):
     settings = get_settings()
-    monkeypatch.setattr(settings, "checker_base_url", settings.generator_base_url or "https://same.example/v1")
-    monkeypatch.setattr(settings, "generator_base_url", settings.checker_base_url)
+    monkeypatch.setattr(settings, "llm_generator_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(settings, "llm_checker_model", "openai/gpt-oss-20b")
     _upload(client, _headers(client))
     with Session(test_engine) as db:
         assert all(db.scalars(select(GenerationLog.same_family_fallback)).all())
+
+
+def test_different_families_on_one_host_are_not_flagged(client, test_engine, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "generator_base_url", "https://api.groq.com/openai/v1")
+    monkeypatch.setattr(settings, "checker_base_url", "https://api.groq.com/openai/v1")
+    monkeypatch.setattr(settings, "llm_generator_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(settings, "llm_checker_model", "qwen/qwen3.8-27b")
+    _upload(client, _headers(client))
+    with Session(test_engine) as db:
+        flags = db.scalars(select(GenerationLog.same_family_fallback)).all()
+    assert flags and not any(flags)
 
 
 def test_textbook_is_a_nested_tree(client):

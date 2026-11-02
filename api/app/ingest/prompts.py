@@ -1,6 +1,10 @@
 """Prompt text for ingestion, kept apart so it can be tuned without touching logic."""
 from app.llm.provider import TASK_CHECK_FAITHFULNESS, TASK_EXTRACT_FACTS
 
+# Text under these headings is revision material, not source facts, so the parser skips it.
+# Matching ignores case and treats a curly apostrophe as a straight one.
+SKIPPED_HEADINGS = ("How they'll ask it", "Quick recall")
+
 EXTRACT_FACTS_SYSTEM = f"""{TASK_EXTRACT_FACTS}
 You turn a passage of course notes into atomic facts for a closed-book textbook.
 
@@ -22,10 +26,9 @@ You check whether facts written from course notes are faithful to their source q
 
 The user message is JSON: {{"items": [{{"id": 0, "quote": "...", "fact": "..."}}]}}
 
-Respond with JSON only, in exactly this shape, with one result per item:
-{{"results": [{{"id": 0, "verdict": "FAITHFUL", "reason": "short reason"}}]}}
+Respond with JSON only, in exactly this shape. Every id goes in exactly one list. Give no reason for a faithful item:
+{{"faithful": [0, 2, 3], "not_faithful": [{{"id": 1, "reason": "at most 12 words"}}]}}
 
-verdict is FAITHFUL or NOT_FAITHFUL.
 - FAITHFUL: the quote states or directly entails everything the fact claims. Rewording is fine, and so is naming the subject that a pronoun or "this" in the quote refers to.
 - NOT_FAITHFUL: the fact adds a claim the quote does not make, changes a number, name, condition or negation, generalises beyond the quote, or contradicts it.
 Judge only from the quote, not from your own knowledge: a true fact the quote does not state is NOT_FAITHFUL.

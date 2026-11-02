@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from app.ingest.prompts import CHECK_FAITHFULNESS_SYSTEM, EXTRACT_FACTS_SYSTEM
 from app.llm import provider
 
-CHUNK_CHARS = 1500
+CHUNK_CHARS = 6000
+SECTION_SEPARATOR = "\n\n"
 FAITHFUL = "FAITHFUL"
 NO_VERDICT_REASON = "checker returned no verdict"
 
@@ -48,6 +49,58 @@ def chunk_spans(text: str, size: int = CHUNK_CHARS) -> list[tuple[int, int]]:
     return spans
 
 
+@dataclass(frozen=True)
+class Piece:
+    """A span of one section, placed at chunk_start in a packed chunk."""
+
+    section_position: int
+    start: int
+    end: int
+    chunk_start: int
+
+    @property
+    def chunk_end(self) -> int:
+        return self.chunk_start + self.end - self.start
+
+
+@dataclass(frozen=True)
+class PackedChunk:
+    text: str
+    pieces: tuple[Piece, ...]
+
+    def to_section(self, start: int, end: int) -> tuple[int, int, int] | None:
+        """Maps a chunk span to (section position, start, end), or None if it crosses a section boundary."""
+        for piece in self.pieces:
+            if piece.chunk_start <= start and end <= piece.chunk_end:
+                offset = piece.start - piece.chunk_start
+                return piece.section_position, start + offset, end + offset
+        return None
+
+
+def pack_chunks(sections, size: int = CHUNK_CHARS) -> list[PackedChunk]:
+    """Fills each request with consecutive sections, so many short sections need few requests."""
+    chunks: list[PackedChunk] = []
+    text, pieces = "", []
+
+    def flush() -> None:
+        nonlocal text, pieces
+        if pieces:
+            chunks.append(PackedChunk(text, tuple(pieces)))
+        text, pieces = "", []
+
+    for section in sections:
+        for start, end in chunk_spans(section.text, size):
+            segment = section.text[start:end]
+            if pieces and len(text) + len(SECTION_SEPARATOR) + len(segment) > size:
+                flush()
+            if pieces:
+                text += SECTION_SEPARATOR
+            pieces.append(Piece(section.position, start, end, len(text)))
+            text += segment
+    flush()
+    return chunks
+
+
 def _facts_list(reply) -> list | None:
     if isinstance(reply, list):
         return reply
@@ -74,16 +127,30 @@ def extract_facts(chunk: str) -> tuple[list[RawFact], int]:
     return facts, malformed
 
 
-def _verdicts_by_id(reply) -> dict[int, dict] | None:
-    results = reply.get("results") if isinstance(reply, dict) else None
-    if not isinstance(results, list):
+def _is_id(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _verdicts_by_id(reply) -> dict[int, Verdict] | None:
+    if not isinstance(reply, dict):
         return None
-    return {r["id"]: r for r in results if isinstance(r, dict) and isinstance(r.get("id"), int)}
+    faithful, rejected = reply.get("faithful"), reply.get("not_faithful")
+    if not isinstance(faithful, list) or not isinstance(rejected, list):
+        return None
+    verdicts = {i: Verdict(True, FAITHFUL) for i in faithful if _is_id(i)}
+    # Rejections come second, so an id in both lists counts as rejected.
+    for item in rejected:
+        if isinstance(item, dict) and _is_id(item.get("id")):
+            verdicts[item["id"]] = Verdict(False, str(item.get("reason") or "no reason given"))
+        elif _is_id(item):
+            verdicts[item] = Verdict(False, "no reason given")
+    return verdicts
 
 
 def check_faithfulness(pairs: list[tuple[str, str]]) -> list[Verdict]:
     """pairs: (source quote, fact). One checker call per chunk, retried once if results are missing.
 
+    The reply lists ids rather than one object per fact, to fit Groq's output-token limit on a large batch.
     Fails closed: an item still without a verdict counts as not faithful.
     """
     if not pairs:
@@ -98,12 +165,4 @@ def check_faithfulness(pairs: list[tuple[str, str]]) -> list[Verdict]:
             raise ExtractionError("checker reply has the wrong shape")
         found = {**(again or {}), **(found or {})}
 
-    verdicts = []
-    for i in range(len(pairs)):
-        result = found.get(i)
-        if result is None:
-            verdicts.append(Verdict(False, NO_VERDICT_REASON))
-        else:
-            # Anything other than exactly FAITHFUL is a rejection.
-            verdicts.append(Verdict(result.get("verdict") == FAITHFUL, str(result.get("reason") or "")))
-    return verdicts
+    return [found.get(i, Verdict(False, NO_VERDICT_REASON)) for i in range(len(pairs))]

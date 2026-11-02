@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from openai import OpenAI  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
-from app.llm.provider import parse_json, role_config  # noqa: E402
+from app.llm.provider import model_family, parse_json, role_config, same_family_checker  # noqa: E402
 
 ENV_LINE = {"generator": "LLM_GENERATOR_MODEL", "checker": "LLM_CHECKER_MODEL"}
 
@@ -51,6 +51,10 @@ def check(role: str) -> bool:
 def main() -> int:
     get_settings()
     results = [check("generator"), check("checker")]
+    families = model_family(role_config("generator").model), model_family(role_config("checker").model)
+    print(f"model families: generator={families[0]} checker={families[1]}")
+    if same_family_checker():
+        print("WARNING: same model family, so checker independence is lost (SPEC section 4)")
     print("RESULT:", "both OK" if all(results) else "problem found, see above")
     return 0 if all(results) else 1
 

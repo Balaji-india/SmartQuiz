@@ -11,11 +11,14 @@ from pathlib import Path
 
 import pymupdf
 
+from app.ingest.prompts import SKIPPED_HEADINGS
+
 MAX_HEADING_CHARS = 120
 MAX_TXT_HEADING_CHARS = 80
 HEADING_SIZE_RATIO = 1.15
 REPEATED_LINE_PAGES = 3
 _NUMBERED = re.compile(r"^(\d+(?:\.\d+)*)[.)]?\s+\S")
+_FOOTER = re.compile(r"\d+\s*/\s*\d+")
 
 
 class ParseError(ValueError):
@@ -52,6 +55,49 @@ class _Boundary:
 
 def normalize(text: str) -> str:
     return " ".join(text.replace("\x00", " ").split())
+
+
+def _is_footer(line: str) -> bool:
+    return bool(_FOOTER.fullmatch(line))
+
+
+def _is_skipped_heading(line: str) -> bool:
+    wanted = {h.casefold() for h in SKIPPED_HEADINGS}
+    return line.replace("’", "'").casefold() in wanted
+
+
+def _line_style(spans: list[dict]) -> tuple[float, bool]:
+    size = max(round(s["size"], 1) for s in spans)
+    bold = all(s["flags"] & 16 or "bold" in s["font"].lower() for s in spans)
+    return size, bold
+
+
+def _visible_lines(doc: pymupdf.Document) -> list[tuple[int, int, float, bool, str]]:
+    """(page, block, size, bold, text) without footers or skipped blocks.
+
+    A skipped block ends at the next bold line at least as large as its heading, even on a later page.
+    """
+    lines = []
+    skip_size: float | None = None
+    for page_no, page in enumerate(doc):
+        for block_no, block in enumerate(page.get_text("dict")["blocks"]):
+            for line in block.get("lines", []):
+                spans = [s for s in line["spans"] if s["text"].strip()]
+                if not spans:
+                    continue
+                text = normalize("".join(s["text"] for s in line["spans"]))
+                if _is_footer(text):
+                    continue
+                size, bold = _line_style(spans)
+                if _is_skipped_heading(text):
+                    skip_size = size
+                    continue
+                if skip_size is not None:
+                    if not (bold and size >= skip_size):
+                        continue
+                    skip_size = None
+                lines.append((page_no, block_no, size, bold, text))
+    return lines
 
 
 def _find_heading(title: str, page_text: str, start: int) -> re.Match | None:
@@ -130,26 +176,15 @@ def _toc_entries(doc: pymupdf.Document, page_count: int) -> list[tuple[int, int,
     for level, title, page, *_ in doc.get_toc():
         title = normalize(title)
         # A TOC entry can have no destination, or point past the end.
-        if title and 1 <= page <= page_count:
+        if title and 1 <= page <= page_count and not _is_skipped_heading(title):
             entries.append((level, page - 1, title))
     return entries
 
 
-def _font_entries(doc: pymupdf.Document) -> list[tuple[int, int, str]]:
+def _font_entries(lines: list[tuple[int, int, float, bool, str]]) -> list[tuple[int, int, str]]:
     sizes: Counter[float] = Counter()
-    lines = []  # (page, block, size, bold, text)
-    for page_no, page in enumerate(doc):
-        for block_no, block in enumerate(page.get_text("dict")["blocks"]):
-            for line in block.get("lines", []):
-                spans = [s for s in line["spans"] if s["text"].strip()]
-                if not spans:
-                    continue
-                for span in spans:
-                    sizes[round(span["size"], 1)] += len(span["text"])
-                text = normalize(" ".join(s["text"] for s in spans))
-                size = max(round(s["size"], 1) for s in spans)
-                bold = all(s["flags"] & 16 or "bold" in s["font"].lower() for s in spans)
-                lines.append((page_no, block_no, size, bold, text))
+    for _, _, size, _, text in lines:
+        sizes[size] += len(text)
     if not sizes:
         return []
 
@@ -184,10 +219,11 @@ def parse_pdf(data: bytes) -> list[ParsedSection]:
     with doc:
         if doc.needs_pass:
             raise ParseError("the PDF is password protected")
-        pages = [normalize(page.get_text()) for page in doc]
-        if not pages:
+        if not len(doc):
             raise ParseError("the PDF has no pages")
-        entries = _toc_entries(doc, len(pages)) or _font_entries(doc)
+        lines = _visible_lines(doc)
+        pages = [" ".join(line[4] for line in lines if line[0] == page_no) for page_no in range(len(doc))]
+        entries = _toc_entries(doc, len(pages)) or _font_entries(lines)
     if entries:
         return _assemble(pages, _boundaries(entries, pages))
     return _assemble(pages, [_Boundary(i, 0, 0, 1, f"Page {i + 1}") for i in range(len(pages))])
@@ -213,13 +249,20 @@ def parse_txt(text: str, filename: str = "Document") -> list[ParsedSection]:
     body: list[str] = []
     found: list[tuple[str | None, int, str]] = []
     previous_blank = True
+    skipping = False
     for raw in text.splitlines():
         line = normalize(raw)
+        if _is_footer(line):
+            continue
+        if _is_skipped_heading(line):
+            skipping, previous_blank = True, False
+            continue
         heading_level = _txt_heading_level(line, previous_blank) if line else None
         if heading_level is not None:
+            skipping = False
             found.append((heading, level, normalize(" ".join(body))))
             heading, level, body = line, heading_level, []
-        elif line:
+        elif line and not skipping:
             body.append(line)
         previous_blank = not line
     found.append((heading, level, normalize(" ".join(body))))

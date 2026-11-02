@@ -2,18 +2,17 @@
 import logging
 import uuid
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
 
 import numpy as np
 from sqlalchemy import delete, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import SessionLocal
-from app.ingest.extractor import check_faithfulness, chunk_spans, extract_facts
+from app.ingest.extractor import PackedChunk, check_faithfulness, extract_facts, pack_chunks
 from app.ingest.hasher import embed_texts, fact_root, hash_fact
 from app.ingest.locator import locate
 from app.ingest.parser import ParsedSection, parse_document
-from app.llm.provider import role_config
+from app.llm.provider import same_family_checker
 from app.models import Document, Fact, GenerationLog, Section
 
 log = logging.getLogger(__name__)
@@ -54,42 +53,42 @@ class IngestResult:
     root: str | None
 
 
-def _extract_section(section: ParsedSection) -> tuple[list[KeptFact], list[FactCheck], int, int]:
+def _extract_chunk(
+    chunk: PackedChunk, sections: list[ParsedSection]
+) -> tuple[list[KeptFact], list[FactCheck], int, int]:
+    raw_facts, dropped = extract_facts(chunk.text)
+    located = []
+    for raw in raw_facts:
+        # Only this chunk: a sentence repeated elsewhere must not get the wrong page.
+        span = locate(raw.quote, chunk.text)
+        target = chunk.to_section(*span) if span else None
+        if target is None:
+            dropped += 1
+        else:
+            located.append((raw, *target))
+
+    # The checker sees the source span, not the model's copy of it.
+    pairs = [(sections[p].text[s:e], raw.fact) for raw, p, s, e in located]
     kept: list[KeptFact] = []
     checks: list[FactCheck] = []
-    dropped = unfaithful = 0
-    for start, end in chunk_spans(section.text):
-        chunk = section.text[start:end]
-        raw_facts, malformed = extract_facts(chunk)
-        dropped += malformed
-
-        located = []
-        for raw in raw_facts:
-            # Only this chunk: a sentence repeated elsewhere must not get the wrong page.
-            span = locate(raw.quote, chunk)
-            if span is None:
-                dropped += 1
-            else:
-                located.append((raw, start + span[0], start + span[1]))
-
-        # The checker sees the source span, not the model's copy of it.
-        pairs = [(section.text[s:e], raw.fact) for raw, s, e in located]
-        for (raw, s, e), verdict in zip(located, check_faithfulness(pairs)):
-            checks.append(FactCheck(verdict.faithful, f"{raw.concept}: {verdict.reason}"))
-            if not verdict.faithful:
-                unfaithful += 1
-                continue
-            kept.append(
-                KeptFact(
-                    section_position=section.position,
-                    concept=raw.concept,
-                    text=raw.fact,
-                    quote=section.text[s:e],
-                    page=section.page_at(s),
-                    char_start=s,
-                    char_end=e,
-                )
+    unfaithful = 0
+    for (raw, position, s, e), verdict in zip(located, check_faithfulness(pairs)):
+        checks.append(FactCheck(verdict.faithful, f"{raw.concept}: {verdict.reason}"))
+        if not verdict.faithful:
+            unfaithful += 1
+            continue
+        section = sections[position]
+        kept.append(
+            KeptFact(
+                section_position=position,
+                concept=raw.concept,
+                text=raw.fact,
+                quote=section.text[s:e],
+                page=section.page_at(s),
+                char_start=s,
+                char_end=e,
             )
+        )
     return kept, checks, dropped, unfaithful
 
 
@@ -110,12 +109,12 @@ def run_ingestion(filename: str, data: bytes) -> IngestResult:
     facts: list[KeptFact] = []
     checks: list[FactCheck] = []
     dropped = unfaithful = 0
-    for section in sections:
-        section_facts, section_checks, section_dropped, section_unfaithful = _extract_section(section)
-        facts += section_facts
-        checks += section_checks
-        dropped += section_dropped
-        unfaithful += section_unfaithful
+    for chunk in pack_chunks(sections):
+        chunk_facts, chunk_checks, chunk_dropped, chunk_unfaithful = _extract_chunk(chunk, sections)
+        facts += chunk_facts
+        checks += chunk_checks
+        dropped += chunk_dropped
+        unfaithful += chunk_unfaithful
 
     facts.sort(key=lambda f: (f.section_position, f.char_start, f.char_end))
     facts, vectors, duplicates = _dedupe(facts)
@@ -129,11 +128,6 @@ def run_ingestion(filename: str, data: bytes) -> IngestResult:
 
 def register_document_onchain(document: Document) -> None:
     """SPEC section 3 step 7. P04 fills this in; it does nothing yet."""
-
-
-def _same_family_checker() -> bool:
-    generator = urlparse(role_config("generator").base_url).hostname
-    return generator is not None and generator == urlparse(role_config("checker").base_url).hostname
 
 
 def _clear_previous_run(db: Session, document: Document) -> None:
@@ -179,7 +173,7 @@ def _save(db: Session, document: Document, result: IngestResult) -> None:
         )
         for f in result.facts
     )
-    same_family = _same_family_checker()
+    same_family = same_family_checker()
     db.add_all(
         GenerationLog(
             document_id=document.id,

@@ -9,7 +9,7 @@ This repo starts empty on purpose. Claude Code builds it step by step using the 
 ## 1. Install once
 - Git, Python 3.11+, Node.js 24, Docker Desktop (Windows, PowerShell)
 - Claude Code (install guide: https://docs.claude.com → Claude Code → Quickstart)
-- Two FREE AI keys for the app (no credit card): Google Gemini from aistudio.google.com and Groq from console.groq.com/keys. Paste both into `.env`
+- One FREE AI key for the app (no credit card): Groq from console.groq.com/keys, used for both generator and checker. A Gemini key is optional. Paste into `.env`
 - A fresh MetaMask account used ONLY as the testnet issuer wallet, plus Amoy test POL from a Polygon faucet
 
 ## 2. Start
