@@ -7,7 +7,7 @@ If a shape here must change, change it here first, then in code, and note it in 
 | Table | Columns |
 | --- | --- |
 | users | id uuid pk, email unique, password_hash, name, created_at |
-| documents | id uuid pk, user_id fk, filename, file_sha256, fact_root (hex), fact_count int, sections_count int, facts_dropped int, register_tx (nullable), status (`ingesting`/`ready`/`failed`), created_at |
+| documents | id uuid pk, user_id fk, filename, file_sha256, fact_root (hex, nullable until ingestion finishes), fact_count int, sections_count int, facts_dropped int, register_tx (nullable), status (`ingesting`/`ready`/`failed`), created_at |
 | sections | id serial pk, document_id fk, parent_id nullable, heading, level int, page_start, page_end, position int |
 | facts | id serial pk, document_id fk, section_id fk, idx int (0-based, unique per document), concept, text, quote, page, char_start, char_end, text_hash (hex), leaf_hash (hex), embedding vector(384) |
 | quizzes | id uuid pk, user_id fk, document_id fk, status (`generating`/`ready`/`failed`), quiz_hash (hex, nullable until ready), salt (hex, nullable until ready), commit_tx nullable, time_limit_sec int, started_at nullable, created_at |

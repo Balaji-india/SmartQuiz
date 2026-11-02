@@ -28,3 +28,13 @@ _(none yet)_
 - **PyTorch:** CPU-only build installed first (2.15.0+cpu, CUDA unavailable). `pip check` clean. `requirements.txt` also lists the CPU index.
 - **Added beyond the prompt:** a one-test Hardhat placeholder so `hardhat test` runs something.
 - **Issues:** the home page was built but not opened in a browser, so its live `/health` display is unconfirmed (P09 covers real screens). npm printed deprecation warnings for Hardhat's dependencies and audit notices for web; neither was reviewed or changed. `samples/sample.pdf` is still missing (needed for P02).
+
+### P01 schema and auth (2026-11-02)
+- **Done:** SQLAlchemy models for all 9 SPEC tables (`api/app/models/tables.py`); one Alembic migration (`vector` extension, all tables, HNSW cosine index on `facts.embedding`, unique `(document_id, idx)`, index on `questions.fingerprint`); `POST /auth/signup`, `POST /auth/login`, `GET /auth/me`; argon2 passwords; JWT HS256 with 7-day expiry; `get_current_user`.
+- **How to run:** `powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 migrate` (new target), then `dev.ps1 api`. Tests: `dev.ps1 test`, or pytest in `api/`.
+- **Test results:** pytest 42 passed (10 new, 32 from P00), run against `smartquiz_test`, which is recreated each session. Covers upgrade and downgrade, models matching the migration, signup → login → `/auth/me`, wrong password and unknown email → the same 401, and bad tokens → 401. Hardhat and the web build were not re-run because nothing in them changed.
+- **Live check on the dev database:** migration applied; signup, login and `/auth/me` worked and a wrong password returned 401. The `a@b.com` test user was then deleted, so `users` has 0 rows.
+- **Decisions SPEC did not cover:** duplicate email → 409; emails stored in lowercase; password 8–128 characters, otherwise 422; name 1–200 characters; empty `JWT_SECRET` → 503 instead of signing with an empty key. Added `email-validator`. Added a test that fails if the models and migration drift apart.
+- **Spec change:** `documents.fact_root` is nullable until ingestion finishes. Other columns are NOT NULL unless SPEC marks them nullable, so a later command that needs an empty value (for example `questions.dependence_score`) must add a migration.
+- **Process change:** Claude now commits at the end of each command, under Balaji's git identity with no Claude attribution. Balaji pushes.
+- **Issues:** in PowerShell 5.1, `http://localhost:8000` takes about 2.3 s per request (IPv6 attempt first) while `127.0.0.1` takes 0.01 s. Use a timeout above 3 s, or `127.0.0.1`, when scripting checks. There is no login rate limiting in Review 1. Open items from P00 remain.

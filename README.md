@@ -80,6 +80,7 @@ Set-Content -Path web\.env.local -Value "NEXT_PUBLIC_API_URL=http://localhost:80
 Run each of these from the repo root, with `api` and `web` in their own terminals:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 db     # Postgres on 5432
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 migrate   # apply database migrations (after db starts)
 powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 api    # http://localhost:8000/health
 powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 web    # http://localhost:3000
 powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 test   # pytest, hardhat test, web build

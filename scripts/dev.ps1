@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("db", "api", "web", "test")]
+    [ValidateSet("db", "migrate", "api", "web", "test")]
     [string]$Target
 )
 
@@ -24,6 +24,7 @@ function Invoke-Step([string]$Dir, [scriptblock]$Step) {
 
 switch ($Target) {
     "db"  { Invoke-Step $root { docker compose up -d db } }
+    "migrate" { Invoke-Step $apiDir { & "$python" -m alembic upgrade head } }
     "api" { Invoke-Step $apiDir { & "$python" -m uvicorn app.main:app --reload --port 8000 } }
     "web" { Invoke-Step $webDir { npm.cmd run dev } }
     "test" {
