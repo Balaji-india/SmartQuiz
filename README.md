@@ -4,7 +4,9 @@ Turn any study material into grounded, source-cited quizzes — with on-chain **
 Industrial project · CMRIT Bengaluru · Industry partner: Dopove Private Limited
 Team: Balaji Keerthi (runs the build) · Deepesh Kumar Kotta and Aravindh Balaji (review, test, present)
 
-This repo starts empty on purpose. Claude Code builds it step by step using the slash commands in `.claude/commands/`.
+Claude Code built this repo step by step with the slash commands in `.claude/commands/`. **Status (2026-11-04):** the
+Review 1 slice is complete (P00–P11 done, all six demo steps pass). See `docs/SUMMARY.md` for an overview and
+`docs/STATUS.md` for the full log.
 
 ## 1. Install once
 - Windows: Git, Python 3.11+, Node.js 24, Docker Desktop (PowerShell)
@@ -22,21 +24,22 @@ Inside Claude Code, type `/` to see the project commands. Each one is a full pro
 
 ## 3. Order of commands
 One person runs all of these, in order, in one session. Time estimates are in `docs/PLAN.md`.
+All twelve were completed on 2026-11-04; they stay here as the record of how the code was built.
 
-| # | Command | What it builds |
-| --- | --- | --- |
-| 1 | `/p00-bootstrap` | Empty monorepo → api, web, contracts, Postgres, `merkle.py`. GitHub push as a backup |
-| 2 | `/p01-schema-auth` | Database schema and auth |
-| 3 | `/p02-ingest` | Textbook Mode |
-| 4 | `/p03-contract` | Registry contract |
-| 5 | `/p04-chain` | Chain service and document registration |
-| 6 | `/p05-quizgen` | Verified quiz generation and metrics |
-| 7 | `/p06-commit-attempt` | Quiz commit, attempts, coverage |
-| 8 | `/p07-chat` | Closed-book chat |
-| 9 | `/p08-verify-api` | Public verify API |
-| 10 | `/p09-web-core` | Main web screens, on the real API |
-| 11 | `/p10-web-chat-verify` | Chat and Verify pages |
-| 12 | `/p11-integrate` | End-to-end demo, seed script. GitHub push as a backup |
+| # | Command | What it builds | State |
+| --- | --- | --- | --- |
+| 1 | `/p00-bootstrap` | Empty monorepo → api, web, contracts, Postgres, `merkle.py`. GitHub push as a backup | Done |
+| 2 | `/p01-schema-auth` | Database schema and auth | Done |
+| 3 | `/p02-ingest` | Textbook Mode | Done |
+| 4 | `/p03-contract` | Registry contract | Done (Amoy `0x4093F5F19Eacf69Fc8144A1d39A3f6838D4dc518`) |
+| 5 | `/p04-chain` | Chain service and document registration | Done |
+| 6 | `/p05-quizgen` | Verified quiz generation and metrics | Done |
+| 7 | `/p06-commit-attempt` | Quiz commit, attempts, coverage | Done |
+| 8 | `/p07-chat` | Closed-book chat | Done |
+| 9 | `/p08-verify-api` | Public verify API | Done |
+| 10 | `/p09-web-core` | Main web screens, on the real API | Done |
+| 11 | `/p10-web-chat-verify` | Chat and Verify pages | Done |
+| 12 | `/p11-integrate` | End-to-end demo, seed script. GitHub push as a backup | Done |
 
 Helpers anytime:
 - `/next` — what to run next
@@ -62,6 +65,7 @@ Claude Command cheat sheet and only structure the prompt; they are not commands 
 - `docs/SPEC.md` — schema, API shapes, hashing, gates, contract
 - `docs/RESEARCH.md` — research summary and why our approach is unique
 - `docs/STATUS.md` — progress log (updated by every command)
+- `docs/SUMMARY.md` — one-page overview of everything done so far (research basis, what is built, results, open issues)
 - `docs/SLIDES-PROMPT.md` — prompt for the Review 1 slides (use in the Claude app)
 
 ## Getting started

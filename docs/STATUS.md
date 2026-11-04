@@ -3,38 +3,32 @@
 Every slash command appends an entry here. `/status` adds a summary block under "Updates".
 
 ## Updates
-### SmartQuiz update — 2026-11-02 20:23
-**Tests:** api pytest 103 passed, 0 failed. Hardhat 1 passing (placeholder). Web build passed.
+### SmartQuiz update — 2026-11-04
+**Tests:** api pytest 204 passed, 0 failed (with a local Hardhat node; chain tests skip without one). Hardhat 13 passing. Web build and lint clean.
 
 **Progress**
-- Done: P00, P01.
-- In progress, blocked: P02. Pipeline built, but sample textbook unusable.
-- Not started: P03–P11.
-- Demo: steps 1–6 not done. Step 1 has API upload only: no Amoy link or screens.
+- Done: P00–P11. All 7 Review 1 cut-list items are done.
+- Demo: steps 1–6 pass in the browser with real Groq models and Polygon Amoy (`CHAIN_OPTIONAL=false`); rehearsals 206 s and 253 s.
+- Stage demo seeded: user `demo@example.com`, document `3ce3f1e0-fb57-4d46-910f-64658822e850`, quiz 1 `b16a8c21-b3e9-4044-8af0-18b177d48664` (ready, not started).
+- Registry on Amoy: `0x4093F5F19Eacf69Fc8144A1d39A3f6838D4dc518`.
 
-**Blockers**
-1. Facts cover ~25% of `sample.pdf`. The generator stops early in most chunks (chunk 0: 2 facts, ending 4% into 5760 chars). No error is raised. Likely output cap plus JSON retries; unverified.
-2. Sample stats incomplete: 50 sections, 191 extracted, 170 kept, 3 dropped, 18 unfaithful. Duplicates and root unknown; the system stopped the run for low memory before embeddings.
-3. Generator daily tokens exhausted:
-```
-Error code: 429 - Rate limit reached for model `openai/gpt-oss-120b` on tokens per day (TPD): Limit 200000, Used 199687, Requested 1646. Please try again in 9m35.856s.
-```
+**Key results on samples/sample.pdf**
+482 facts / 50 sections, quotes cover 74.1% of section text, `gate0_fact` rejects 17%; 0 repeated target facts between quizzes; CHAT_MIN_SIM 0.69 (0 of 20 misplaced); tamper test true → false; quiz hash match true; average dependence 0.19–0.20; same-family checker not used.
 
-**Differences from original SPEC (SPEC updated)**
-- Both roles on Groq: `openai/gpt-oss-120b`, `qwen/qwen3.8-27b`. Independence is by model family.
-- `gate0_fact` added; compact replies, reasons on rejections only.
-- 6000-char chunks span sections.
-- P05: one generator call, one batched regeneration.
-- Daily limits stop immediately; `N / N` footers and revision blocks skipped.
+**Open issues**
+1. Low document dependence (the blind checker answers many questions on a general cyber-security chapter): main lever for Review 2.
+2. Extraction misses ~26% of section text (e.g. the AIIMS Delhi line); `gate0_fact` is too strict in places (no headings).
+3. Results after a refresh rely on sessionStorage (no GET attempt endpoint).
+4. Both roles depend on Groq; Python packages unpinned.
 
 **Run next**
-1. Fix extraction coverage once tokens recover: log why replies stop short.
-2. Rerun `scripts/ingest_stats.py`, record root and stats.
-3. Then `/p03-contract`. Don't start P05 on this textbook.
+1. Top up the issuer wallet (≈0.030 POL, ~12 transactions left) before the review.
+2. `/code-review` and `/security-review`.
+3. Commit and push (Deepesh does this himself).
 
 **Reviewers should check**
-- Deepesh: fact quality after the fix; whether `gate0_fact` is too strict (it rejected "McCumber model" because the quote omits the name).
-- Both: accept single-vendor risk, since a Groq outage stops both roles?
+- Deepesh: fact and question quality in the dev DB; whether `gate0_fact` and the chat prompt need to be stricter or looser.
+- Aravindh: the screens, following the six demo steps in `docs/PLAN.md`.
 
 ## Entries
 ### Setup
@@ -205,3 +199,10 @@ Error code: 429 - Rate limit reached for model `openai/gpt-oss-120b` on tokens p
 - Results after a page refresh rely on sessionStorage (no GET attempt endpoint).
 - Not done (not in Review 1 scope): distractor gate, Bloom ladder, mastery, Review 2 items in PLAN.
 - Not run yet: `/code-review` and `/security-review` (P03, P05, P08, P11 ask for them). No commits made: Deepesh commits and pushes.
+
+### Review 1 docs and presentation (2026-11-04, Fedora)
+- **Done:** added `docs/SUMMARY.md` (one-page overview: research basis, what each command built, results, references, open issues, Review 2). Replaced the stale 2026-11-02 block under "Updates" with a current one. CLAUDE.md: removed "no existing code", added the Fedora laptop and `docs/SUMMARY.md` to the read list (no rules changed). README: status line, command table marked done, SUMMARY in the docs list. PLAN: title marked completed and an "Outcome" section added; the original plan is kept below it. SPEC unchanged.
+- **Outside the repo:** a three-speaker presentation script was generated at `~/Downloads/SmartQuiz_Review1_Presentation_Script.pdf` (research, unique features, what was built, demo script, results, Q&A). It is not tracked in git.
+- **How to run:** nothing to run; docs only.
+- **Tests:** not run; no code changed.
+- **Issues:** none new. No commits made: Deepesh commits and pushes.

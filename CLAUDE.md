@@ -1,18 +1,19 @@
 # SmartQuiz — project memory for Claude Code
 
 Claude Code reads this file at the start of every session. Keep it short. Change it with `/memory` when a rule changes.
-We are building from scratch. There is no existing code.
+The Review 1 slice (P00–P11) is built and in the repo as of 2026-11-04. Next work is Review 2 (see `docs/PLAN.md`).
 
 ## What we are building
 SmartQuiz turns an uploaded PDF or text file into a closed-book "textbook" of numbered facts, then generates cited
 quizzes from it. Unique claim: **Proof of Grounding** — every question is derived from specific facts of a specific
 document, passes verification gates, and its quiz hash is committed on chain before the learner starts.
-Industry partner: Dopove Private Limited. Team (CMRIT): Balaji runs every command, in one Claude Code session on a Windows laptop. Deepesh and Aravindh review, test and present.
+Industry partner: Dopove Private Limited. Team (CMRIT): Balaji runs every command, in one Claude Code session on a Windows laptop. Deepesh and Aravindh review, test and present. Since 2026-11-04 work also runs on Deepesh's Fedora Linux laptop.
 
 Read these before any task:
 - `docs/PLAN.md` — Review 1 scope, command sequence, demo
 - `docs/SPEC.md` — schema, API contract, hashing, gate prompts (the source of truth for shapes)
 - `docs/STATUS.md` — what is done so far (append to it after every task)
+- `docs/SUMMARY.md` — one-page overview of the project state (research basis, what is built, results, open issues)
 
 ## Repo layout (monorepo)
 ```

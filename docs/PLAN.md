@@ -1,7 +1,17 @@
-# SmartQuiz — Review 1 plan (build from scratch)
+# SmartQuiz — Review 1 plan (completed 2026-11-04)
 
 Goal for Review 1 (~40%): one end-to-end slice on one PDF that proves **Proof of Grounding** live.
 Budget: ~23 working hours, one operator, one sequence. Detailed shapes are in `docs/SPEC.md`.
+
+## Outcome
+- All 12 commands (P00–P11) and all 7 cut-list items are done. Details in `docs/STATUS.md`, overview in `docs/SUMMARY.md`.
+- All six demo steps pass on the real chapter with real Groq models and Polygon Amoy; two rehearsals took 206 s and 253 s.
+- Sample chapter: 482 facts from 50 sections, 74% of section text covered; 0 repeated target facts between quizzes; chat threshold 0.69 with 0 of 20 misplaced.
+- Weak result, shown honestly: average document dependence is 0.19–0.20, because the blind checker answers many questions on a general cyber-security chapter.
+- Work moved partly to Fedora Linux (`scripts/dev.sh`); the Windows commands still apply on Balaji's laptop.
+- Not done yet: `/code-review` and `/security-review` runs; GitHub backup push is left to the team.
+
+The rest of this file is the plan as approved before the build.
 
 ## Who does what
 - **Balaji** runs every command, in one Claude Code session on a Windows laptop.
