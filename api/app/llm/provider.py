@@ -24,11 +24,17 @@ from app.config import API_DIR, get_settings
 
 CACHE_PATH: Path = API_DIR / ".cache" / "llm.sqlite"
 MAX_RETRIES = 5
+MAX_BAD_JSON_RETRIES = 1
 JSON_ONLY = "Return valid JSON only. No prose and no code fences."
 _FENCE = re.compile(r"^\s*```[a-zA-Z]*\s*|\s*```\s*$")
 # Prompts carry these markers so FAKE mode knows which reply shape to produce.
 TASK_EXTRACT_FACTS = "[task:extract_facts]"
 TASK_CHECK_FAITHFULNESS = "[task:check_faithfulness]"
+TASK_GENERATE_QUESTIONS = "[task:generate_questions]"
+TASK_GATE_GROUNDING = "[task:gate_grounding]"
+TASK_GATE_SOLVABILITY = "[task:gate_solvability]"
+TASK_GATE_DEPENDENCE = "[task:gate_dependence]"
+TASK_CHAT_ANSWER = "[task:chat_answer]"
 
 
 _DAILY_LIMIT = re.compile(r"per[ _-]?day|\b[tr]pd\b|\bdaily\b", re.IGNORECASE)
@@ -46,6 +52,10 @@ class DailyLimitError(LLMError):
     """A daily limit was reached. Retrying cannot help, so this always stops the work."""
 
 
+class BadJSONError(LLMError):
+    """The model failed to produce valid JSON twice. Usually the reply is too long: send less."""
+
+
 @dataclass(frozen=True)
 class RoleConfig:
     api_key: str
@@ -55,6 +65,7 @@ class RoleConfig:
     tpm: int | None
     requests_per_day: int = 0  # 0 = no budget
     max_tokens: int | None = None
+    reasoning_effort: str | None = None
 
 
 def _generator_key(s) -> str:
@@ -74,6 +85,7 @@ def role_config(role: str) -> RoleConfig:
             s.generator_tpm,
             s.generator_requests_per_day,
             s.generator_max_tokens or None,
+            s.generator_reasoning_effort or None,
         )
     if role == "checker":
         return RoleConfig(
@@ -84,6 +96,7 @@ def role_config(role: str) -> RoleConfig:
             s.checker_tpm,
             s.checker_requests_per_day,
             s.checker_max_tokens or None,
+            s.checker_reasoning_effort or None,
         )
     raise ValueError(f"unknown role: {role!r}")
 
@@ -249,6 +262,7 @@ def _is_daily_limit(exc: APIStatusError) -> bool:
 def _chat(role: str, cfg: RoleConfig, system: str, user: str) -> str:
     client = _client(role, cfg)
     throttle = _throttle(role, cfg)
+    bad_json_seen = 0
     for retry in range(MAX_RETRIES + 1):
         entry = throttle.acquire(_estimate_tokens(system, user))
         _reserve_request(role, cfg)
@@ -258,6 +272,7 @@ def _chat(role: str, cfg: RoleConfig, system: str, user: str) -> str:
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                 response_format={"type": "json_object"},
                 **({"max_tokens": cfg.max_tokens} if cfg.max_tokens else {}),
+                **({"reasoning_effort": cfg.reasoning_effort} if cfg.reasoning_effort else {}),
             )
             if response.usage:
                 throttle.settle(entry, response.usage.total_tokens)
@@ -279,6 +294,11 @@ def _chat(role: str, cfg: RoleConfig, system: str, user: str) -> str:
                 wait = _retry_after(exc)
             # Groq answers 400 when a model breaks JSON mode; another try usually succeeds.
             bad_json = status == 400 and JSON_VALIDATE_FAILED in exc.response.text
+            if bad_json:
+                # Each failed try can cost thousands of tokens of the daily budget, so try only once more.
+                bad_json_seen += 1
+                if bad_json_seen > MAX_BAD_JSON_RETRIES:
+                    raise BadJSONError(f"{role} could not produce valid JSON (status 400, {JSON_VALIDATE_FAILED})") from exc
             fatal = status is not None and status != 429 and status < 500 and not bad_json
             if fatal or retry == MAX_RETRIES:
                 raise LLMError(f"{role} call failed (status {status}): {type(exc).__name__}") from exc
@@ -302,12 +322,61 @@ def _fake_check_faithfulness(user: str) -> dict:
     return {"faithful": [i["id"] for i in json.loads(user)["items"]], "not_faithful": []}
 
 
+def _fake_generate_questions(user: str, attempt: int) -> dict:
+    # The correct option is the target fact itself, so the FAKE solvability gate can find it.
+    questions = []
+    for item in json.loads(user)["items"]:
+        target = item["target"]
+        idx, answer = target["idx"], target["idx"] % 4
+        options = [f"Option {k} about {target['concept']} (fact {idx}, try {attempt})" for k in range(4)]
+        options[answer] = target["text"]
+        questions.append(
+            {
+                "target_idx": idx,
+                # Built from the fact text, so different facts give dissimilar stems (no cosine duplicates).
+                "stem": f"{target['text'].rstrip('.')}: which option says this? (fact {idx}, try {attempt})",
+                "options": options,
+                "answer_index": answer,
+                "fact_idxs": [idx],
+                "bloom_level": item.get("bloom_level", "remember"),
+            }
+        )
+    return {"questions": questions}
+
+
+def _fake_gate(system: str, user: str) -> dict:
+    results = []
+    for item in json.loads(user)["items"]:
+        if TASK_GATE_GROUNDING in system:
+            results.append({"id": item["id"], "verdict": "SUPPORTED", "reason": "fake"})
+            continue
+        facts = item.get("facts", [])
+        choice = next((i for i, o in enumerate(item["options"]) if o in facts), 0)
+        result = {"id": item["id"], "choice": choice, "reason": "fake"}
+        if TASK_GATE_DEPENDENCE in system:
+            result["confidence"] = 0
+        results.append(result)
+    return {"results": results}
+
+
+def _fake_chat_answer(user: str) -> dict:
+    facts = json.loads(user)["facts"]
+    first = facts[0]
+    return {"answer": f"{first['text']} [F{first['idx']}]"}
+
+
 def _fake(role: str, system: str, user: str, attempt: int) -> dict:
     """Deterministic offline stand-in. Later commands extend it for their prompts."""
     if TASK_EXTRACT_FACTS in system:
         return _fake_extract_facts(user)
     if TASK_CHECK_FAITHFULNESS in system:
         return _fake_check_faithfulness(user)
+    if TASK_GENERATE_QUESTIONS in system:
+        return _fake_generate_questions(user, attempt)
+    if any(task in system for task in (TASK_GATE_GROUNDING, TASK_GATE_SOLVABILITY, TASK_GATE_DEPENDENCE)):
+        return _fake_gate(system, user)
+    if TASK_CHAT_ANSWER in system:
+        return _fake_chat_answer(user)
     return {"fake": True, "role": role, "attempt": attempt}
 
 
@@ -329,7 +398,7 @@ def generate_json(role: str, system: str, user: str, attempt: int = 0):
         try:
             value = parse_json(text)
         except json.JSONDecodeError as exc:
-            raise LLMError(f"{role} returned invalid JSON twice") from exc
+            raise BadJSONError(f"{role} returned invalid JSON twice") from exc
 
     _cache_put(key, value)
     return value

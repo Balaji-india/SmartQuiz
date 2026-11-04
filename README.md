@@ -7,7 +7,8 @@ Team: Balaji Keerthi (runs the build) · Deepesh Kumar Kotta and Aravindh Balaji
 This repo starts empty on purpose. Claude Code builds it step by step using the slash commands in `.claude/commands/`.
 
 ## 1. Install once
-- Git, Python 3.11+, Node.js 24, Docker Desktop (Windows, PowerShell)
+- Windows: Git, Python 3.11+, Node.js 24, Docker Desktop (PowerShell)
+- Linux: Git, Docker + Compose, Node.js 22+, uv (bash) — see "Getting started → Linux"
 - Claude Code (install guide: https://docs.claude.com → Claude Code → Quickstart)
 - One FREE AI key for the app (no credit card): Groq from console.groq.com/keys, used for both generator and checker. A Gemini key is optional. Paste into `.env`
 - A fresh MetaMask account used ONLY as the testnet issuer wallet, plus Amoy test POL from a Polygon faucet
@@ -64,7 +65,32 @@ Claude Command cheat sheet and only structure the prompt; they are not commands 
 - `docs/SLIDES-PROMPT.md` — prompt for the Review 1 slides (use in the Claude app)
 
 ## Getting started
-Windows PowerShell, from the repo root. Keep the quotes, because paths may contain spaces. PowerShell 5.1 has no `&&`.
+There are two sets of commands: **Windows** (PowerShell, `scripts/dev.ps1`) and **Linux** (bash, `scripts/dev.sh`).
+Use the one for your laptop. `.env` (repo root) must be filled in first on either.
+
+### Linux (Fedora / bash)
+Needs Docker with Compose, Node.js 22+ and [uv](https://docs.astral.sh/uv/) (uv fetches Python 3.12; the system
+Python may be too new for PyTorch). Your user must be in the `docker` group. From the repo root:
+```bash
+./scripts/dev.sh setup     # once: api/.venv (Python 3.12, CPU torch), npm ci in web and contracts, web/.env.local
+./scripts/dev.sh db        # Postgres on 5432
+./scripts/dev.sh migrate   # apply database migrations (after db starts)
+./scripts/dev.sh api       # http://localhost:8000/health   (own terminal)
+./scripts/dev.sh web       # http://localhost:3000          (own terminal)
+./scripts/dev.sh test      # pytest, hardhat test, web build
+```
+Stop `dev.sh web` before `dev.sh test` (or any `npm run build`): both use `web/.next`, and a build under a running dev
+server leaves it serving stale CSS. If styles look missing, stop it, delete `web/.next` and start it again.
+
+Check the LLM keys and model names:
+```bash
+PYTHONUTF8=1 api/.venv/bin/python api/scripts/check_llm.py
+```
+Copying the repo from Windows? Delete `api/.venv` and every `node_modules` first (they hold Windows binaries), then
+run `setup`. Keep `api/.cache/llm.sqlite`: it holds cached LLM replies that save free-tier quota.
+
+### Windows (PowerShell)
+From the repo root. Keep the quotes, because paths may contain spaces. PowerShell 5.1 has no `&&`.
 
 First-time setup (`.env` must already be filled in):
 ```powershell
@@ -90,3 +116,33 @@ Check the LLM keys and model names (prints no key values, sends one tiny request
 ```powershell
 api\.venv\Scripts\python.exe api\scripts\check_llm.py
 ```
+
+## Run the demo (Review 1)
+The demo runs with `CHAIN_OPTIONAL=false`, so a chain failure cannot pass silently. Set it in `.env` before the
+review (or pass it as an environment variable for one run, as below), and check the issuer wallet has test POL
+(each document registration or quiz commit costs about 0.0025 POL on Amoy).
+
+**Linux (bash)**, from the repo root, each server in its own terminal:
+```bash
+./scripts/dev.sh db
+./scripts/dev.sh migrate
+(cd api && CHAIN_OPTIONAL=false PYTHONUTF8=1 .venv/bin/python -m uvicorn app.main:app --port 8000)
+./scripts/dev.sh web
+# before the review: ingest the chapter and pre-generate quiz 1 (not started), then paste what it prints
+(cd api && PYTHONUTF8=1 .venv/bin/python scripts/seed_demo.py)
+```
+
+**Windows (PowerShell)**, from the repo root, each server in its own window:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 db
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 migrate
+Set-Location api; $env:PYTHONUTF8=1; $env:CHAIN_OPTIONAL="false"; .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 web
+Set-Location api; $env:PYTHONUTF8=1; .\.venv\Scripts\python.exe scripts\seed_demo.py
+```
+
+`seed_demo.py` logs in as `demo@example.com` (password `review1-demo`, or `--password` / `SMARTQUIZ_DEMO_PASSWORD`).
+Then open http://localhost:3000, log in as the demo user and follow the six demo steps in `docs/PLAN.md`:
+textbook and Amoy link → open quiz 1 (already committed) → submit → **New quiz (no repeats)** → **Ask a doubt**
+(in scope, then out of scope) → **Verify this question** (edit one word, Re-check) → **Verify this quiz**.
+If Amoy is unreachable, use a local chain instead (SPEC section 6) with `CHAIN_OPTIONAL=true`, and say so on stage.

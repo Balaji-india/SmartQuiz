@@ -61,11 +61,14 @@ SectionOut = {"id":3,"heading":"3.2 Process Scheduling","level":2,"page_start":3
 QuizOut = {"id":"uuid","document_id":"uuid","status":"ready","time_limit_sec":600,"quiz_hash":"0x…|null","commit_tx":"0x…|null",
   "explorer_url":"…|null","chain_status":"confirmed","questions":[{"id":"uuid","position":1,"stem":"…","options":["a","b","c","d"],
   "bloom_level":"remember","flagged_general":false}],
+  "started_at":"iso|null","submitted":false,
   "generation":{"candidates":14,"accepted":10,"rejected":4}}
   // status "generating": "questions":[], "generation":null, quiz_hash and commit_tx null, chain_status "pending".
   // status "ready", not started: hash and commit fields filled, "questions":[].
   // After the attempt is submitted, each question also has "fact_idxs":[214]. Never before.
   // target_fact_idx and answer_index are never in QuizOut.
+  // started_at lets the web timer survive a refresh; submitted is true once the attempt exists.
+  // generation.rejected = candidates with a failed gate, validation or duplicate row; a spare that passed but was not needed is neither accepted nor rejected.
 
 QuizProgressOut = {"accepted":6,"rejected":3,"target":10,"stage":"verifying"}
   // stage: selecting | generating | verifying | committing | done | failed
@@ -81,7 +84,7 @@ ChatOut = {"abstained":false,"answer":"… [F214] …","citations":[{"idx":214,"
   //             "nearest_sections":[{"id":3,"heading":"…"},{"id":5,"heading":"…"}],"best_similarity":0.32}
 
 MetricsOut = {"document_id":"uuid","candidates":28,"accepted":20,
-  "rejected_by_gate":{"gate1":3,"gate3":4},"top_reasons":[{"gate":"gate1","reason":"…","count":2}],
+  "rejected_by_gate":{"gate1":3,"gate3":4},   // plus "generator_error" when there are any"top_reasons":[{"gate":"gate1","reason":"…","count":2}],
   "duplicates_blocked":{"fingerprint":2,"cosine":1},"flagged_general":2,"avg_dependence":0.78,
   "repeat_rate_between_quizzes":0.0,"same_family_checker_used":false,"same_family_gate_calls":0}
   // candidates = distinct generation_log.candidate_id.
@@ -109,6 +112,7 @@ Rules:
    Skipped while parsing: page footers matching `N / N`, and text under the headings in `SKIPPED_HEADINGS` (`app/ingest/prompts.py`), up to the next bold line at least as large as that heading.
 3. Consecutive sections are packed into chunks of up to 6000 chars (a longer section is split at sentence ends), to save requests → one generator call per chunk → JSON `{"facts":[{"fact": str, "quote": str, "concept": str}]}` (an object, because the provider forces JSON object mode).
    - fact = one self-contained claim (understandable without the passage); quote = verbatim text copied from the chunk.
+   - Coverage: if the reply's located quotes end before 75% of the chunk (and at least 1000 chars remain), one follow-up call extracts the rest. A reply that fails JSON validation twice (`BadJSONError`, usually too long) is retried as two halves cut at the sentence end nearest the middle, at most 2 levels deep. Generator `reasoning_effort` comes from `GENERATOR_REASONING_EFFORT` (`low`), because gpt-oss at the default effort spent its output on reasoning.
 4. Locate quote in its chunk: exact `find`, else rapidfuzz `partial_ratio_alignment` ≥ 90 (exact only under 20 chars) → char_start/char_end in section text (whitespace collapsed to single spaces), page from offset map. `facts.quote` stores the source span at those offsets. Not found, malformed, or crossing two sections → drop, count `facts_dropped`.
 4a. Faithfulness (`gate0_fact`): one batched checker call per chunk, on the located quotes and their facts. Input `{"items":[{"id","quote","fact"}]}`, output `{"faithful":[id],"not_faithful":[{"id","reason"}]}` (compact, to fit the checker's 1000 output tokens per minute; only rejections carry a reason). NOT_FAITHFUL → drop, count `facts_unfaithful`. Each check → one `generation_log` row (`candidate_id` and `quiz_id` null). Missing verdicts → retry once with attempt = 1, then treated as NOT_FAITHFUL. A wrong-shaped reply twice → the document is `failed`.
 5. De-duplicate facts within a document by cosine ≥ 0.95, keeping the first in reading order. Not counted in `facts_dropped`.
@@ -129,7 +133,8 @@ Only the target fact counts as used or covered. A context fact in `fact_idxs` do
 
 Retesting a fact (tiers 2–4): ask for the other `bloom_level` than `last_bloom` (or than the earlier question's level), so the fingerprint differs. If still a duplicate, drop it and take the next fact.
 
-Generator prompt output (JSON): `{"stem", "options":[4], "answer_index", "fact_idxs":[target + up to 2 same-section idx], "bloom_level"}`.
+Generator prompt output (JSON): `{"questions":[{"target_idx", "stem", "options":[4], "answer_index", "fact_idxs":[target + up to 2 same-section idx], "bloom_level"}]}` (`target_idx` maps each question back to its target). Context offered per target: up to 4 same-section facts nearest by idx. A reply item that is missing or malformed is logged as `generator_error` and joins the batched regeneration. First call: N targets + max(2, ceil(0.3·N)) spares, interleaved across sections so the first N kept stay spread.
+Gates run as one batched checker call each (Gate 1 and Gate 3 in parallel, then Gate 4 on the survivors); ids still missing get one more call with attempt = 1, then fail closed. Gate 3 and Gate 4 see the options shuffled (seeded by candidate_id).
 Distractors must be plausible and must not be true according to the cited facts.
 
 | Gate | Model | Input | Pass rule |

@@ -1,0 +1,82 @@
+{
+  "doc_uuid": "00000000-0000-4000-8000-000000000007",
+  "root": "0xf3e7d1aa872861997ad97b5a624c8eaaddd8c2850879f4641621b8c93f11f6a9",
+  "facts": [
+    {
+      "idx": 0,
+      "text": "Round-robin scheduling gives each process a fixed time quantum.",
+      "text_hash": "0xb281ae212bfb482f77de71b8a125bc069a47cf65858f65b077c66fc74dd01e00",
+      "leaf": "0xa009081bf70bf8921c0716e8b08d836968b34c9da4db47f00c85c61b443651d5",
+      "proof": [
+        "0x7a56b62f10c523ab1fa5515e24c08b7dc1865b082a06df54c9f748c4f0e40521",
+        "0xf00e20c2b3703c5b509a76e94b9195dba02ad8adce6755efa7ebf0dca39b550b",
+        "0xd90377656b2175eb07f3311ac43ddcd5ccb27422c66ed6980a7e98b837dafb80"
+      ]
+    },
+    {
+      "idx": 1,
+      "text": "A process control block stores the state of a process.",
+      "text_hash": "0x594568d0759419c9855cc1a2fd5e0500a21106a83d1d1e2d0b473c24a9e0f2ad",
+      "leaf": "0x7a56b62f10c523ab1fa5515e24c08b7dc1865b082a06df54c9f748c4f0e40521",
+      "proof": [
+        "0xa009081bf70bf8921c0716e8b08d836968b34c9da4db47f00c85c61b443651d5",
+        "0xf00e20c2b3703c5b509a76e94b9195dba02ad8adce6755efa7ebf0dca39b550b",
+        "0xd90377656b2175eb07f3311ac43ddcd5ccb27422c66ed6980a7e98b837dafb80"
+      ]
+    },
+    {
+      "idx": 2,
+      "text": "Paging divides physical memory into fixed-size frames.",
+      "text_hash": "0x2b899969dc91098e4856c01e25d5c2ce44baed4acb85fcd90654f63a0a928541",
+      "leaf": "0xe0eba4e760e1bb6dbff003960ffddddc6437fbe6d88f2c21a8cb10d20bd5f9de",
+      "proof": [
+        "0x8fe08e03af1bda2f54d041a11925a30037b154b0009d87c00cc692014170091a",
+        "0xa90bb1dae5ce3a649dcaf684b3ca871604df133535221984e6bb6b3e52f953ad",
+        "0xd90377656b2175eb07f3311ac43ddcd5ccb27422c66ed6980a7e98b837dafb80"
+      ]
+    },
+    {
+      "idx": 3,
+      "text": "A deadlock requires mutual exclusion, hold and wait, no preemption and circular wait.",
+      "text_hash": "0x4ab1abf064ecd813b54b98864e113d9edb6d48c573c779e45f3d8deb39c55962",
+      "leaf": "0x8fe08e03af1bda2f54d041a11925a30037b154b0009d87c00cc692014170091a",
+      "proof": [
+        "0xe0eba4e760e1bb6dbff003960ffddddc6437fbe6d88f2c21a8cb10d20bd5f9de",
+        "0xa90bb1dae5ce3a649dcaf684b3ca871604df133535221984e6bb6b3e52f953ad",
+        "0xd90377656b2175eb07f3311ac43ddcd5ccb27422c66ed6980a7e98b837dafb80"
+      ]
+    },
+    {
+      "idx": 4,
+      "text": "Thrashing happens when a system spends more time paging than executing.",
+      "text_hash": "0xd55d089df4de64f5fb3e3d9d6cc18300cbbaae3da3ea16bd328388117ffb25a2",
+      "leaf": "0xdb81a30b60624879a92b980ff7252d3ce1ce9529accf8fbaa25f33351631c490",
+      "proof": [
+        "0xee1782c271f75ca449fda374c8e38660d8ed916ada76ad06553939e8de168008",
+        "0x5d9b7639e21d693efd78f74e273dd6700bec1e0974339d6c41514e982f0977dc",
+        "0xf82f66436247b8558283da162e41cc02f460f2d0dc78507ee4dec83db0b248e2"
+      ]
+    },
+    {
+      "idx": 5,
+      "text": "A semaphore is an integer variable accessed only through wait and signal.",
+      "text_hash": "0x9effe21535890fe5f0cfe24363d1a9e6eea7c1e7fe7c3c754a097418564a6053",
+      "leaf": "0xee1782c271f75ca449fda374c8e38660d8ed916ada76ad06553939e8de168008",
+      "proof": [
+        "0xdb81a30b60624879a92b980ff7252d3ce1ce9529accf8fbaa25f33351631c490",
+        "0x5d9b7639e21d693efd78f74e273dd6700bec1e0974339d6c41514e982f0977dc",
+        "0xf82f66436247b8558283da162e41cc02f460f2d0dc78507ee4dec83db0b248e2"
+      ]
+    },
+    {
+      "idx": 6,
+      "text": "Ünïcode facts are hashed as UTF-8 bytes without normalisation.",
+      "text_hash": "0x356b93334c76b95c64e6f01344d37b38f6408c0c0a645426f36a15e895d06f2b",
+      "leaf": "0x5d9b7639e21d693efd78f74e273dd6700bec1e0974339d6c41514e982f0977dc",
+      "proof": [
+        "0x8514eccf8769916ceb5426ea6ea30a5aa36243838c6cdf66e8540ad8fc293e6c",
+        "0xf82f66436247b8558283da162e41cc02f460f2d0dc78507ee4dec83db0b248e2"
+      ]
+    }
+  ]
+}

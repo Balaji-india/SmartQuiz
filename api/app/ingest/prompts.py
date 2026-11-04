@@ -11,9 +11,11 @@ You turn a passage of course notes into atomic facts for a closed-book textbook.
 Respond with JSON only, in exactly this shape:
 {{"facts": [{{"fact": "...", "quote": "...", "concept": "..."}}]}}
 
+Coverage comes first: work through the passage from its first sentence to its last, in order, and extract every claim it states. Do not stop early and do not pick only the important ones. Expect roughly one fact per sentence or list item; a sentence with several claims gives several facts.
+
 Rules:
 - fact: one self-contained claim, understandable without the passage. Replace pronouns with what they refer to. One claim per fact.
-- quote: the passage text that states the claim, copied character for character. Do not fix spelling, reword, shorten with "..." or join separate sentences.
+- quote: the passage text that states the claim, copied character for character. Keep it short: the shortest span that states the claim. Do not fix spelling, reword, shorten with "..." or join separate sentences.
 - concept: a short noun phrase naming the topic, for example "Round-robin scheduling".
 - Use only what the passage states. Add no outside knowledge, examples or interpretation.
 - Skip page numbers, headers, exercises, and text that states no claim.

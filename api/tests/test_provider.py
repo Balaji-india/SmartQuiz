@@ -151,6 +151,7 @@ class _Completions:
 
     def create(self, **kwargs):
         self.count += 1
+        self.kwargs = kwargs
         reply = self.replies.pop(0)
         if isinstance(reply, Exception):
             raise reply
@@ -171,8 +172,8 @@ def api(cache, monkeypatch):
     sleeps = []
     monkeypatch.setattr(provider.time, "sleep", sleeps.append)
 
-    def install(replies, budget=0):
-        cfg = RoleConfig("k", "http://invalid.test", "m", 1000, None, budget)
+    def install(replies, budget=0, **extra):
+        cfg = RoleConfig("k", "http://invalid.test", "m", 1000, None, budget, **extra)
         monkeypatch.setattr(provider, "role_config", lambda role: cfg)
         completions = _Completions(replies)
         client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
@@ -302,3 +303,27 @@ def test_throttle_enforces_tpm(monkeypatch):
     throttle.acquire(800)
     throttle.acquire(800)
     assert clock["t"] >= 60
+
+
+@pytest.mark.parametrize("effort", [None, "low"])
+def test_reasoning_effort_is_sent_only_when_set(api, effort):
+    completions, _ = api(['{"ok": true}'], reasoning_effort=effort)
+    provider.generate_json("generator", "s", "u")
+    assert completions.kwargs.get("reasoning_effort") == effort
+
+
+def test_settings_pass_reasoning_effort_per_role(monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "generator_reasoning_effort", "low")
+    monkeypatch.setattr(get_settings(), "checker_reasoning_effort", "")
+    assert provider.role_config("generator").reasoning_effort == "low"
+    assert provider.role_config("checker").reasoning_effort is None
+
+
+def test_json_validate_failed_twice_stops_with_bad_json_error(api):
+    error = '{"error":{"code":"json_validate_failed"}}'
+    completions, _ = api([_status_error(400, error), _status_error(400, error), '{"never": "reached"}'])
+    with pytest.raises(provider.BadJSONError):
+        provider.generate_json("generator", "s", "u")
+    assert completions.count == 2

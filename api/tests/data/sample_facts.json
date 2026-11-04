@@ -1,0 +1,3376 @@
+[
+{
+"idx": 0,
+"text": "Cyber security is a current, serious problem and more digitalisation increases risk",
+"concept": "Cyber security risk",
+"page": 1,
+"section": "Week 1: Introduction: why cyber security matters to managers"
+},
+{
+"idx": 1,
+"text": "Cyber security affects individuals, organisations, society and government",
+"concept": "Affected units",
+"page": 1,
+"section": "Week 1: Introduction: why cyber security matters to managers"
+},
+{
+"idx": 2,
+"text": "Technology plays a triple role in cyber security: source of threat, asset to protect, and tool for defence",
+"concept": "Technology role",
+"page": 1,
+"section": "Week 1: Introduction: why cyber security matters to managers"
+},
+{
+"idx": 3,
+"text": "Cyber security equals information security plus the security of individuals in the cyber world",
+"concept": "Cyber security definition",
+"page": 1,
+"section": "Week 1: Introduction: why cyber security matters to managers"
+},
+{
+"idx": 4,
+"text": "The goal of security is confidentiality, integrity, and availability (CIA)",
+"concept": "CIA triad",
+"page": 1,
+"section": "Week 1: Introduction: why cyber security matters to managers"
+},
+{
+"idx": 5,
+"text": "Ordinary phishing is random mass email, whereas spear phishing is targeted and researched",
+"concept": "Phishing types",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 6,
+"text": "Ransomware encrypts a victim's machine and demands money for the decryption key",
+"concept": "Ransomware",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 7,
+"text": "The 2021 Kaseya point-of-sale attack stopped retail stores and hackers demanded about $70 million",
+"concept": "Kaseya attack",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 8,
+"text": "Health data is protected by HIPAA in the United States",
+"concept": "Health data protection",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 9,
+"text": "An EY survey found that 91 % of organisations reported at least one cyber incident in a year",
+"concept": "Cyber incident prevalence",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 10,
+"text": "Connected cars receive over-the-air updates, and India's ICAT now tests cars for cyber security",
+"concept": "Connected car security",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 11,
+"text": "Drones and IoT introduce physical danger into cyber security",
+"concept": "Drone and IoT risks",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 12,
+"text": "Any device connected to the internet is not safe",
+"concept": "IoT security",
+"page": 1,
+"section": "Real incidents the professor used"
+},
+{
+"idx": 13,
+"text": "Government concerns include protecting its own systems and data and regulating privacy and data protection",
+"concept": "Government concerns",
+"page": 1,
+"section": "Four summary points from Lecture 2"
+},
+{
+"idx": 14,
+"text": "Technology can be a source of threat, an asset to be protected, and a defence mechanism such as firewalls",
+"concept": "Technology roles",
+"page": 1,
+"section": "Four summary points from Lecture 2"
+},
+{
+"idx": 15,
+"text": "Security is the state of being secure, free from danger, and also a psychological feeling of safety",
+"concept": "Security definition",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 16,
+"text": "The term \"cyber\" originates from Greek meaning \"steersman\" and has been used since the 1990s for the internet‑connected world",
+"concept": "Cyber etymology",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 17,
+"text": "Spelling variations of \"cyber security\" include \"cyber security\" (two words), \"cybersecurity\" (one word), and \"cyber-security\" (Indian compromise)",
+"concept": "Cyber security spelling",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 18,
+"text": "Cyber security is defined by ITU (2008) as a collection of tools, policies, concepts, safeguards, guidelines, risk management approaches, actions, training, best practices, assurance and technologies used to protect the cyber environment and organisational and user assets",
+"concept": "ITU definition",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 19,
+"text": "Information security is the protection of information and its critical elements, including the systems and hardware that use, store and transmit that information",
+"concept": "Information security definition",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 20,
+"text": "Information security is part of cyber security, which also covers people-related issues such as cyber crime, cyber bullying, and drone attacks",
+"concept": "Scope of cyber security",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 21,
+"text": "Organisational security includes layers such as physical, personal, operations, communications, network and information security",
+"concept": "Organisational security layers",
+"page": 2,
+"section": "Definitions"
+},
+{
+"idx": 22,
+"text": "Zero trust is a security approach that trusts no human and lets technology decide",
+"concept": "Zero trust",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 23,
+"text": "Contingency planning is reactive management that restores normal operations after something has gone wrong",
+"concept": "Contingency planning",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 24,
+"text": "Risk management is proactive management that seeks to prevent problems before they occur",
+"concept": "Risk management",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 25,
+"text": "Cryptography provides confidentiality",
+"concept": "Cryptography",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 26,
+"text": "Passive defence includes walls and firewalls, while active defence involves offensive actions that may raise legal issues",
+"concept": "Defence types",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 27,
+"text": "Privacy regulation exists in the US, Europe (GDPR) and India",
+"concept": "Privacy regulation",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 28,
+"text": "Protected Health Information (PHI) is health data linked to an identity, and sharing it without verified authorisation is a PHI breach",
+"concept": "PHI breach",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 29,
+"text": "Critical Infrastructure Protection prioritises systems such as SCADA controls for water and power",
+"concept": "Critical infrastructure",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 30,
+"text": "A firewall alone never constitutes a complete information security programme; information security combines policy, awareness/training and technology",
+"concept": "Information security components",
+"page": 2,
+"section": "What the course covers"
+},
+{
+"idx": 31,
+"text": "The CIA triad is the purpose of cyber security",
+"concept": "CIA purpose",
+"page": 3,
+"section": "Week 2: Foundations: CIA, access control and the Target breach"
+},
+{
+"idx": 32,
+"text": "The McCumber Cube has three dimensions with three values each, creating 27 cells to ensure comprehensive coverage",
+"concept": "McCumber Cube",
+"page": 3,
+"section": "Week 2: Foundations: CIA, access control and the Target breach"
+},
+{
+"idx": 33,
+"text": "Identification, authentication, authorization, and accountability are sequential steps in access control",
+"concept": "Access control steps",
+"page": 3,
+"section": "Week 2: Foundations: CIA, access control and the Target breach"
+},
+{
+"idx": 34,
+"text": "A vulnerability is a weakness, whereas an exploit is the use of that weakness",
+"concept": "Vulnerability vs exploit",
+"page": 3,
+"section": "Week 2: Foundations: CIA, access control and the Target breach"
+},
+{
+"idx": 35,
+"text": "The 2013 Target breach occurred despite heavy investment because of management failures",
+"concept": "Target breach",
+"page": 3,
+"section": "Week 2: Foundations: CIA, access control and the Target breach"
+},
+{
+"idx": 36,
+"text": "Confidentiality means only the intended recipient can read the information",
+"concept": "Confidentiality",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 37,
+"text": "Rivest, Shamir & Adleman's 1978 example involves Alice sending information to Bob with an eavesdropper Eve",
+"concept": "RSA example",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 38,
+"text": "Achieving confidentiality requires information classification, secure storage, policies, training, and encryption such as the Caesar cipher",
+"concept": "Confidentiality controls",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 39,
+"text": "Integrity means information is whole, complete and unaltered",
+"concept": "Integrity",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 40,
+"text": "Changing \"10 years' experience\" to \"2\" in a CV is an example of a breach of integrity",
+"concept": "Integrity breach",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 41,
+"text": "Entering a wrong date of birth (2010 instead of 2000) is an example of a breach of integrity",
+"concept": "Integrity breach",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 42,
+"text": "Data subjects should be able to access and correct their data",
+"concept": "Data subject rights",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 43,
+"text": "Availability means information is available to authorised users when needed",
+"concept": "Availability",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 44,
+"text": "The IRCTC database being down when you try to book is an example of an availability failure",
+"concept": "Availability failure",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 45,
+"text": "Availability is achieved through reliability and redundancy and is often contracted in Service Level Agreements as \"nines\" such as 99.999%",
+"concept": "Availability measures",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 46,
+"text": "100% availability has near‑infinite cost",
+"concept": "Availability cost",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 47,
+"text": "Accountability is the concept of knowing who is responsible when something goes wrong and is supported by sign‑in logs",
+"concept": "Accountability",
+"page": 3,
+"section": "The CIA triad"
+},
+{
+"idx": 48,
+"text": "The McCumber Cube was proposed by John McCumber",
+"concept": "McCumber Cube",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 49,
+"text": "The McCumber Cube has three dimensions, each with three values, giving 27 cells",
+"concept": "McCumber Cube structure",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 50,
+"text": "A manager checks every cell of the McCumber Cube so no aspect is missed",
+"concept": "McCumber Cube usage",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 51,
+"text": "One dimension of the McCumber Cube is Information states (Storage, processing, transmission)",
+"concept": "McCumber Cube dimension",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 52,
+"text": "Another dimension of the McCumber Cube is Security goals (Confidentiality, integrity, availability)",
+"concept": "McCumber Cube dimension",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 53,
+"text": "The third dimension of the McCumber Cube is Safeguards (methods) such as Policy, education, technology",
+"concept": "McCumber Cube dimension",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 54,
+"text": "An example cell of the McCumber Cube is \"integrity of data during processing, ensured through education\"",
+"concept": "McCumber Cube example",
+"page": 3,
+"section": "McCumber Cube (NSTISSC security model)"
+},
+{
+"idx": 55,
+"text": "The security process sequence is Identification → Authentication → Authorization → Accountability",
+"concept": "Security process",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 56,
+"text": "Identification creates a credible identity such as Aadhaar enrolment, ID card, roll number, employee ID, or account number",
+"concept": "Identification",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 57,
+"text": "Identification is the hardest step because without identity you cannot ensure confidentiality",
+"concept": "Identification importance",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 58,
+"text": "Authentication verifies that you are who you claim to be",
+"concept": "Authentication",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 59,
+"text": "Passwords are something you know for authentication",
+"concept": "Authentication factor",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 60,
+"text": "Fingerprints or biometrics are something you are/have for authentication",
+"concept": "Authentication factor",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 61,
+"text": "Multi‑factor authentication combines multiple authentication factors",
+"concept": "Multi‑factor authentication",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 62,
+"text": "Authorization is the level of access granted after authentication, based on role",
+"concept": "Authorization",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 63,
+"text": "Authorization requires classifying information and people and mapping them",
+"concept": "Authorization process",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 64,
+"text": "Accountability fixes responsibility after an incident and uses logs of sign‑ins and sign‑outs",
+"concept": "Accountability",
+"page": 4,
+"section": "Access control: four steps"
+},
+{
+"idx": 65,
+"text": "A vulnerability is a weakness such as an unlocked classroom door",
+"concept": "Vulnerability",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 66,
+"text": "An exploit uses a vulnerability to break in, such as someone walking in through an unlocked door",
+"concept": "Exploit",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 67,
+"text": "Not every vulnerability gets exploited",
+"concept": "Vulnerability exploitation",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 68,
+"text": "A false positive is when something genuine is flagged as malicious",
+"concept": "False positive",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 69,
+"text": "A false negative is when a real attack is missed",
+"concept": "False negative",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 70,
+"text": "Tighter security usually reduces efficiency, leading people to bypass security",
+"concept": "Security trade‑off",
+"page": 4,
+"section": "Key vocabulary"
+},
+{
+"idx": 71,
+"text": "During Thanksgiving/Christmas 2013, hackers stole customers' payment card data from Target's point‑of‑sale terminals",
+"concept": "Target breach",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 72,
+"text": "The attackers entered Target's network through a third‑party HVAC vendor whose access was not limited",
+"concept": "Supply‑chain breach",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 73,
+"text": "Target's network was not segmented, allowing the vendor's access to reach the POS systems, which was an authorization failure",
+"concept": "Network segmentation failure",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 74,
+"text": "Malware called a RAM scraper read card data from POS memory",
+"concept": "Malware",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 75,
+"text": "Data was encrypted in transmission but not in the POS RAM, creating a technical vulnerability",
+"concept": "Data encryption gap",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 76,
+"text": "Target had a $1.6 million malware‑detection tool installed six months earlier",
+"concept": "Malware detection tool",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 77,
+"text": "The automatic malware‑deletion feature of Target's tool was turned off and warnings were ignored because of too many false positives",
+"concept": "Security policy failure",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 78,
+"text": "Logging at Target was incomplete",
+"concept": "Logging failure",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 79,
+"text": "Target incurred about $100 million in settlements with banks, card companies and customers",
+"concept": "Financial impact",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 80,
+"text": "Target faced more than 90 lawsuits after the breach",
+"concept": "Legal impact",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 81,
+"text": "Target's holiday‑season profit fell 46 % after the breach",
+"concept": "Financial impact",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 82,
+"text": "The breach caused intangible losses such as loss of goodwill, customer trust and reputation",
+"concept": "Reputational impact",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 83,
+"text": "The Target breach was a watershed moment for US cybersecurity regulation",
+"concept": "Regulatory impact",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 84,
+"text": "Investing in technology alone is insufficient if management processes fail, as employees can circumvent security",
+"concept": "Security governance",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 85,
+"text": "Andrew Grove's book \"Only the Paranoid Survive\" argues that a paranoid mindset suits cybersecurity",
+"concept": "Security mindset",
+"page": 4,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 86,
+"text": "Some firms choose to invest the bare minimum and pay fines because $100 M is tiny compared to $72 B revenue",
+"concept": "Cost‑benefit decision",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 87,
+"text": "Whitman & Mattord list critical characteristics of information as availability, accuracy, authenticity, confidentiality, integrity, utility, and possession",
+"concept": "Information characteristics",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 88,
+"text": "Components of an information system are software, hardware, data, people, procedures, and networks",
+"concept": "Information system components",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 89,
+"text": "Good access‑control practice includes role‑based permissions, periodic review and revocation of rights, and audited access logs",
+"concept": "Access control best practices",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 90,
+"text": "An SQL‑injectable input field before any attack is a vulnerability",
+"concept": "SQL injection vulnerability",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 91,
+"text": "The crafted SQL string that uses a vulnerable field is an exploit",
+"concept": "SQL injection exploit",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 92,
+"text": "A safe app quarantined as malware is a false positive",
+"concept": "False positive example",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 93,
+"text": "Malware that slips through detection is a false negative",
+"concept": "False negative example",
+"page": 5,
+"section": "Case: Target Corporation (2013)"
+},
+{
+"idx": 94,
+"text": "GRC stands for Governance, Risk and Compliance",
+"concept": "GRC abbreviation",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 95,
+"text": "Three approaches to GRC are a GRC framework, standards‑driven (ISO/NIST), and a textbook organisational‑planning approach",
+"concept": "GRC approaches",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 96,
+"text": "COBIT is a GRC framework from ISACA and the IT community",
+"concept": "COBIT",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 97,
+"text": "COSO is a GRC framework used for accounting and internal control",
+"concept": "COSO",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 98,
+"text": "COSO ERM is a GRC framework for enterprise risk",
+"concept": "COSO ERM",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 99,
+"text": "BS 7799 evolved into ISO/IEC 17799 and then ISO/IEC 27001, which follows the PDCA cycle",
+"concept": "Security standards evolution",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 100,
+"text": "NIST is the open, free US alternative to ISO standards",
+"concept": "NIST",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 101,
+"text": "Controls can be preventive, detective or corrective",
+"concept": "Control types",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 102,
+"text": "iPremier experienced a DDoS attack while having no plans, no logs and a weak hosting partner",
+"concept": "iPremier breach",
+"page": 6,
+"section": "Week 3: Governance, Risk and Compliance (GRC)"
+},
+{
+"idx": 103,
+"text": "Breaches are increasing and the Marriott 2019 breach involved about 500 million records",
+"concept": "Data breach size",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 104,
+"text": "Louis Pasteur said \"Fortune favours the prepared mind\"",
+"concept": "Quote",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 105,
+"text": "The standards-driven approach treats cyber security separately by implementing a standard from ISO or NIST",
+"concept": "Standards-driven approach",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 106,
+"text": "The standards-driven approach suits small and mid-size firms and can also be used within a GRC framework",
+"concept": "Standards-driven approach",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 107,
+"text": "The textbook (organisational planning) approach makes cyber security a priority in strategic planning together with contingency planning",
+"concept": "Textbook approach",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 108,
+"text": "Following the 2016 debit-card breach, the RBI made cyber security a strategic function in banks, separate from IT, and required chip cards",
+"concept": "RBI mandate",
+"page": 6,
+"section": "Why GRC"
+},
+{
+"idx": 109,
+"text": "Governance is positioned higher than management",
+"concept": "Governance vs management",
+"page": 6,
+"section": "Governance vs management"
+},
+{
+"idx": 110,
+"text": "The board establishes management and then evaluates, directs, and monitors it",
+"concept": "Board responsibilities",
+"page": 6,
+"section": "Governance vs management"
+},
+{
+"idx": 111,
+"text": "Linking cyber security to governance makes cyber security a strategic priority",
+"concept": "Cyber security governance",
+"page": 6,
+"section": "Governance vs management"
+},
+{
+"idx": 112,
+"text": "The Sarbanes-Oxley Act was enacted after accounting scandals such as Enron",
+"concept": "SOX origin",
+"page": 6,
+"section": "Governance vs management"
+},
+{
+"idx": 113,
+"text": "COBIT was created by ISACA (Information Systems Audit and Control Association)",
+"concept": "COBIT origin",
+"page": 6,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 114,
+"text": "COBIT stands for Control Objectives for Information and related Technology",
+"concept": "COBIT acronym",
+"page": 6,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 115,
+"text": "The current version discussed is COBIT 5",
+"concept": "COBIT version",
+"page": 6,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 116,
+"text": "COBIT principles include meeting stakeholder needs, covering the enterprise end to end, a single integrated framework, a holistic approach, and separating governance from management",
+"concept": "COBIT principles",
+"page": 6,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 117,
+"text": "COBIT's management cycle consists of Plan (APO), Build (BAI), Run (DSS), Monitor (MEA), and governance activities are Evaluate, Direct, Monitor",
+"concept": "COBIT management cycle",
+"page": 6,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 118,
+"text": "COSO stands for Committee of Sponsoring Organizations, an accounting community credited to the American Accounting Association",
+"concept": "COSO definition",
+"page": 7,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 119,
+"text": "In COSO ERM, risk response closes the loop",
+"concept": "Risk response",
+"page": 7,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 120,
+"text": "Internal controls protect assets, maintain records, provide accurate information, prepare financial reports, improve efficiency, encourage policy adherence, and ensure legal compliance",
+"concept": "Purpose of internal controls",
+"page": 7,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 121,
+"text": "Types of control include preventive (deter problems), detective (find problems), and corrective (fix after detection)",
+"concept": "Control types",
+"page": 7,
+"section": "The three GRC frameworks"
+},
+{
+"idx": 122,
+"text": "ISO/IEC 27001 is the basic standard written in the PDCA cycle for continual improvement",
+"concept": "ISO 27001",
+"page": 7,
+"section": "Standards for cyber security"
+},
+{
+"idx": 123,
+"text": "ISO/IEC 27002 is the code of practice",
+"concept": "ISO 27002",
+"page": 7,
+"section": "Standards for cyber security"
+},
+{
+"idx": 124,
+"text": "The ISO/IEC 27000 series includes over 50 standards covering verticals and horizontals",
+"concept": "ISO 27000 series scope",
+"page": 7,
+"section": "Standards for cyber security"
+},
+{
+"idx": 125,
+"text": "The company is an online seller of luxury, rare and vintage goods with over 1 million customers in 2017",
+"concept": "Company profile",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 126,
+"text": "The company is one of the top two sellers, rivaled by MarketTop",
+"concept": "Market position",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 127,
+"text": "The company's competitive edge is customer experience",
+"concept": "Competitive advantage",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 128,
+"text": "The company conducts quarterly performance reviews",
+"concept": "Performance management",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 129,
+"text": "Bob Turley is the new CIO and has been in the role for 3 months",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 130,
+"text": "Jack Samuelson is the CEO of the company",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 131,
+"text": "Tim Mandel is the CTO and a co‑founder of the company",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 132,
+"text": "Warren Spangler is the VP of Business Development and is worried about stock and public relations",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 133,
+"text": "Peter Stewart is the legal counsel and says \"cut the connection\"",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 134,
+"text": "Joanne Ripley leads the operations team",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 135,
+"text": "Leon Ledbetter is a new operations staff member",
+"concept": "Personnel",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 136,
+"text": "At 4:30 am the website became unreachable and emails with the text \"ha ha ha\" were sent",
+"concept": "Incident",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 137,
+"text": "A SYN flood from multiple sites hit the router running the firewall, constituting a distributed denial‑of‑service attack using zombies",
+"concept": "Attack type",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 138,
+"text": "The business continuity plan binder was out of date",
+"concept": "Preparedness",
+"page": 7,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 139,
+"text": "Joanne was not allowed to enter the data centre during the incident",
+"concept": "Access control",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 140,
+"text": "Detailed logging had been switched off to improve customer experience by about 20%",
+"concept": "Logging",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 141,
+"text": "The attack stopped on its own around 5:26 am",
+"concept": "Attack duration",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 142,
+"text": "Motives for DDoS attacks include hacktivism, cyber vandalism, cyber warfare, extortion and rivalry",
+"concept": "Attack motives",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 143,
+"text": "The company had no incident response or disaster recovery plan",
+"concept": "Planning",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 144,
+"text": "The professor's point is that shutting down an online business in a competitive market may kill it, but the attack stopped \"at the attacker's mercy\" without diagnosis, forcing investigation",
+"concept": "Lesson",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 145,
+"text": "A hot, warm or cold standby site should have existed for the company",
+"concept": "Continuity planning",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 146,
+"text": "A de facto standard is widely adopted without a formal standards body",
+"concept": "Standard type",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 147,
+"text": "A de jure standard is formally approved by a standards body",
+"concept": "Standard type",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 148,
+"text": "Guidelines are non‑mandatory recommendations",
+"concept": "Guidelines",
+"page": 8,
+"section": "Case: iPremier, Part A (DDoS attack)"
+},
+{
+"idx": 149,
+"text": "Business Continuity (BCP) is led by the CIO for severe incidents requiring relocation to an alternate site",
+"concept": "BCP scope",
+"page": 9,
+"section": "IRP vs DRP vs BCP"
+},
+{
+"idx": 150,
+"text": "An incident is an attack that actually happened by exploiting a vulnerability",
+"concept": "Incident definition",
+"page": 10,
+"section": "IRP vs DRP vs BCP"
+},
+{
+"idx": 151,
+"text": "A threat is something that could happen",
+"concept": "Threat definition",
+"page": 10,
+"section": "IRP vs DRP vs BCP"
+},
+{
+"idx": 152,
+"text": "The analogy compares shoe soles giving grip to the possibility of slipping on a banana peel in the rain",
+"concept": "Analogy",
+"page": 10,
+"section": "IRP vs DRP vs BCP"
+},
+{
+"idx": 153,
+"text": "Maximum Tolerable Downtime (MTD) is the total outage the process owner will accept",
+"concept": "Maximum Tolerable Downtime",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 154,
+"text": "Owners often say zero downtime, but zero has an enormous cost",
+"concept": "Downtime cost",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 155,
+"text": "Recovery Time Objective (RTO) is the time to bring the system back live",
+"concept": "Recovery Time Objective",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 156,
+"text": "Work Recovery Time (WRT) is the time after the system is live until work actually resumes",
+"concept": "Work Recovery Time",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 157,
+"text": "Recovery Point Objective (RPO) is the point in time to which data can be recovered",
+"concept": "Recovery Point Objective",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 158,
+"text": "Hourly backups give an RPO of one hour",
+"concept": "Backup frequency",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 159,
+"text": "MTD equals RTO plus WRT",
+"concept": "MTD calculation",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 160,
+"text": "FIPS 199 can be used to rate impact on confidentiality, integrity and availability as low, moderate or high",
+"concept": "FIPS 199 impact rating",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 161,
+"text": "The shorter the desired downtime, the higher the cost of recovery",
+"concept": "Recovery cost",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 162,
+"text": "The longer the downtime, the higher the cost of disruption",
+"concept": "Disruption cost",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 163,
+"text": "The optimum downtime is where the cost curves of recovery and disruption cross",
+"concept": "Optimal downtime",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 164,
+"text": "Contingency planning is described as a negotiation for time",
+"concept": "Contingency planning description",
+"page": 10,
+"section": "Business Impact Analysis (BIA)"
+},
+{
+"idx": 165,
+"text": "Incident response is organized before, during, and after an incident",
+"concept": "Incident response timing",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 166,
+"text": "Every incident should be documented with what, when, where, why and how",
+"concept": "Incident documentation",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 167,
+"text": "An after-action review should be held after an incident",
+"concept": "After-action review",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 168,
+"text": "Incident indicators are possible, probable, and definite",
+"concept": "Incident indicators",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 169,
+"text": "Under GDPR a breach must be reported within 72 hours",
+"concept": "GDPR breach reporting",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 170,
+"text": "A hot site is fully configured, parallel, and ready immediately",
+"concept": "Hot site",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 171,
+"text": "A warm site is ready within a defined time",
+"concept": "Warm site",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 172,
+"text": "A cold site provides basic space and takes the longest to activate",
+"concept": "Cold site",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 173,
+"text": "Testing of contingency plans includes drills and simulated attacks",
+"concept": "Contingency testing",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 174,
+"text": "Carnegie Mellon’s incident response plan is an example of a detailed plan",
+"concept": "IR plan example",
+"page": 10,
+"section": "Incident response and continuity"
+},
+{
+"idx": 175,
+"text": "iPremier publicly disclosed a DDoS attack lasting 75 minutes",
+"concept": "iPremier DDoS disclosure",
+"page": 10,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 176,
+"text": "Files were checked only by name and size, not content, so tampering could not be ruled out",
+"concept": "File verification limitation",
+"page": 10,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 177,
+"text": "Others wanted to keep the system running and build a new site in parallel",
+"concept": "Alternative recovery approach",
+"page": 10,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 178,
+"text": "Measures adopted after the incident included phased restart, file-by-file checks, move to a modern hosting facility, better firewall, more disk space, high-level logging, staff training, an incident response team with simulated attacks, a security consultant and third‑party audits",
+"concept": "Post‑incident measures",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 179,
+"text": "Two weeks later the FBI called because an iPremier production machine was attacking a competitor",
+"concept": "FBI investigation",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 180,
+"text": "The firewall had been breached and the DDoS was a diversion",
+"concept": "Firewall breach",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 181,
+"text": "Rebuilding now could destroy evidence",
+"concept": "Evidence preservation",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 182,
+"text": "There was possible theft of card data, breaching card‑processing agreements",
+"concept": "Card data theft",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 183,
+"text": "Google Cloud Armor stopped an HTTPS DDoS peaking at 46 million requests per second in June 2022 using rate limiting and defence in depth",
+"concept": "Google Cloud Armor mitigation",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 184,
+"text": "Mitigations for DDoS include reducing attack surface, CDNs, knowing normal vs abnormal traffic, planning for scale and load balancing, DDoS protection services, and better firewalls",
+"concept": "DDoS mitigations",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 185,
+"text": "A contingency plan anticipates, reacts to and recovers from events that threaten information assets",
+"concept": "Contingency plan definition",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 186,
+"text": "IRP, DRP and BCP are parts of a contingency plan",
+"concept": "Contingency plan components",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 187,
+"text": "Business resumption planning equals a combined DRP and BCP plus recovery teams",
+"concept": "Business resumption planning",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 188,
+"text": "Strategic plans lead to tactical plans which lead to operational plans, not the reverse",
+"concept": "Planning hierarchy",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 189,
+"text": "Tactical plans cover 1–2 years",
+"concept": "Tactical plan duration",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 190,
+"text": "Textbook incident response has three phases: detection, reaction, recovery",
+"concept": "IR phases",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 191,
+"text": "Planning is separate from incident response, so saying there are four phases including planning is false",
+"concept": "IR phase count",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 192,
+"text": "Incident classification decides whether an incident candidate is a real incident",
+"concept": "Incident classification",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 193,
+"text": "Business Impact Analysis (BIA) is a preliminary contingency planning step done after the CP policy and common to CP and risk management",
+"concept": "Business Impact Analysis",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 194,
+"text": "The first phase of BIA prioritises business processes by contribution to the mission",
+"concept": "BIA prioritisation",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 195,
+"text": "The BC plan runs alongside the DR plan when damage is major, not only when DR fails",
+"concept": "BC plan execution",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 196,
+"text": "Definite indicators of an incident include use of dormant accounts, changes to logs, presence of hacker tools, notification by partner or peer, and notification by the hacker",
+"concept": "Definite indicators",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 197,
+"text": "Probable indicators include activities at unexpected times, presence of new accounts, reported attacks, and notification from an IDPS",
+"concept": "Probable indicators",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 198,
+"text": "Possible indicators include unfamiliar files, unknown programs or processes, unusual consumption of computing resources, unusual system crashes",
+"concept": "Possible indicators",
+"page": 11,
+"section": "Case: iPremier, Parts B and C"
+},
+{
+"idx": 199,
+"text": "A cyber security policy must never conflict with the law",
+"concept": "Policy legality",
+"page": 12,
+"section": "Week 5: Cyber security policy"
+},
+{
+"idx": 200,
+"text": "Policy maps to standards, which map to procedures and guidelines",
+"concept": "Policy hierarchy",
+"page": 12,
+"section": "Week 5: Cyber security policy"
+},
+{
+"idx": 201,
+"text": "The three levels of security policy are EISP, ISSP, and SysSP",
+"concept": "Security policy levels",
+"page": 12,
+"section": "Week 5: Cyber security policy"
+},
+{
+"idx": 202,
+"text": "SETA stands for Security Education, Training and Awareness",
+"concept": "SETA",
+"page": 12,
+"section": "Week 5: Cyber security policy"
+},
+{
+"idx": 203,
+"text": "Bochman describes \"cyber insecurity\" and recommends protecting crown jewels by reducing digital pathways",
+"concept": "Bochman recommendation",
+"page": 12,
+"section": "Week 5: Cyber security policy"
+},
+{
+"idx": 204,
+"text": "A regulation is a policy that is enforceable in law",
+"concept": "Regulation",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 205,
+"text": "A policy applies to everyone for the collective good and fairness",
+"concept": "Policy scope",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 206,
+"text": "India's IT industry grew after policy changes such as software technology parks and the 1991 liberalisation",
+"concept": "Policy impact",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 207,
+"text": "A badly framed policy, for example a prohibition on internet access, leads to violations",
+"concept": "Policy failure",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 208,
+"text": "The terms of reference for Justice B.N. Srikrishna's committee are to protect privacy without inhibiting the potential of digital technologies",
+"concept": "Committee terms",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 209,
+"text": "A good policy should never conflict with the law and must stand up in court",
+"concept": "Policy principle",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 210,
+"text": "A good policy must be properly supported and administered, such as implementing a firewall that actually blocks illegal sites",
+"concept": "Policy implementation",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 211,
+"text": "A good policy should contribute to the success of the organisation",
+"concept": "Policy principle",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 212,
+"text": "A good policy should involve end users in its formulation",
+"concept": "Policy principle",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 213,
+"text": "Arthur Andersen adopted a document‑retention policy to keep documents \"while relevant\" and then shredded audit evidence",
+"concept": "Document retention policy",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 214,
+"text": "Courts saw Arthur Andersen's shredding of audit evidence as destruction of evidence and a policy in conflict with the law",
+"concept": "Legal conflict",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 215,
+"text": "Retention rules today use specific periods, for example IITM keeps answer scripts about four years",
+"concept": "Retention rule",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 216,
+"text": "If an employee accesses child pornography at work, the organisation can defend itself only if it has a clear policy prohibiting illegal sites and enforces it with a firewall",
+"concept": "Due diligence",
+"page": 12,
+"section": "What a policy is"
+},
+{
+"idx": 217,
+"text": "A policy is broad, abstract, strategic, long‑term and rarely changed",
+"concept": "Policy characteristics",
+"page": 12,
+"section": "Policy, standards, procedures, guidelines"
+},
+{
+"idx": 218,
+"text": "Standards are more detailed statements of how a policy is implemented",
+"concept": "Standards",
+"page": 12,
+"section": "Policy, standards, procedures, guidelines"
+},
+{
+"idx": 219,
+"text": "When breach reporting changes from 72 to 24 hours, the standard should be updated, not the policy",
+"concept": "Standard update",
+"page": 12,
+"section": "Policy, standards, procedures, guidelines"
+},
+{
+"idx": 220,
+"text": "Procedures and guidelines provide step‑by‑step implementation, such as firewall configuration rules",
+"concept": "Procedures",
+"page": 12,
+"section": "Policy, standards, procedures, guidelines"
+},
+{
+"idx": 221,
+"text": "Policy must be disseminated to employees, for example through the Tata Code of Conduct",
+"concept": "Policy communication",
+"page": 13,
+"section": "Policy, standards, procedures, guidelines"
+},
+{
+"idx": 222,
+"text": "An Enterprise Information Security Policy (EISP) sets strategic direction, scope and tone, and assigns responsibilities",
+"concept": "EISP",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 223,
+"text": "An EISP contains a statement of purpose, definitions of information security elements, need for security, roles and responsibilities, and references to standards such as NIST or ISO",
+"concept": "EISP contents",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 224,
+"text": "An EISP may include a rule that employees will be given email to be used per procedures",
+"concept": "EISP rule",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 225,
+"text": "An Issue‑Specific Security Policy (ISSP) provides detailed, targeted guidance on using a technology or resource such as email, web, viruses, hacking tools, work from home, or BYOD",
+"concept": "ISSP",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 226,
+"text": "An ISSP also indemnifies the organisation against liability",
+"concept": "ISSP indemnification",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 227,
+"text": "An ISSP may prohibit personal use of official email and set storage space limits",
+"concept": "ISSP restrictions",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 228,
+"text": "A System‑Specific Security Policy (SysSP) operates at the implementation level and includes managerial guidance and technical specifications such as access control lists and configuration rules",
+"concept": "SysSP",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 229,
+"text": "A mail server can be configured with a 5 GB quota as part of a SysSP",
+"concept": "SysSP example",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 230,
+"text": "Indemnify means to absolve of responsibility",
+"concept": "Indemnify definition",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 231,
+"text": "Hospitals indemnify doctors and an ISSP protects the organisation when an employee misuses resources",
+"concept": "Indemnification use",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 232,
+"text": "An access control list maps users or roles to resources they can access and defines permitted actions such as read, write, create, modify, delete, compare, copy, and also specifies when, where and how access is allowed",
+"concept": "Access control list",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 233,
+"text": "Windows XP includes roles such as administrators, backup operators, guests, and power users",
+"concept": "Windows XP roles",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 234,
+"text": "Configuration rules include firewall rules that specify which sites or IPs are allowed",
+"concept": "Configuration rules",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 235,
+"text": "Configuration rules also include IDS rules",
+"concept": "IDS rules",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 236,
+"text": "A firewall prevents access and is preventive",
+"concept": "Firewall",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 237,
+"text": "An IDS only detects and raises an alarm",
+"concept": "IDS",
+"page": 13,
+"section": "Three levels of security policy"
+},
+{
+"idx": 238,
+"text": "Bochman is a senior grid strategist at the Idaho National Laboratory (INL).",
+"concept": "Personnel",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 239,
+"text": "If a critical system is digital and connected, it will be compromised.",
+"concept": "Critical system vulnerability",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 240,
+"text": "No amount of spending guarantees safety.",
+"concept": "Security spending limitation",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 241,
+"text": "Approximately 1,168 weekly attacks per organisation were reported in Q4 2022.",
+"concept": "Attack frequency",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 242,
+"text": "Global security spending is projected to reach about $460 billion by 2025.",
+"concept": "Security market forecast",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 243,
+"text": "Critical infrastructure sectors such as energy, telecom, transport, and water are interconnected, causing failures to cascade.",
+"concept": "Infrastructure interdependency",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 244,
+"text": "Saudi Aramco experienced the Shamoon wiper attack in 2012 affecting roughly 35,000 machines.",
+"concept": "Aramco 2012 attack",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 245,
+"text": "Saudi Aramco suffered a safety-system attack in 2017.",
+"concept": "Aramco 2017 attack",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 246,
+"text": "In 2021 Saudi Aramco paid $50 million in extortion via a contractor.",
+"concept": "Aramco 2021 extortion",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 247,
+"text": "Ukraine's grid has been targeted by cyber attacks.",
+"concept": "Ukraine grid attack",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 248,
+"text": "The RedEcho campaign targeted India's grid.",
+"concept": "RedEcho campaign",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 249,
+"text": "Cyber hygiene practices such as patching, passwords, training, segmentation, and asset inventory are necessary but insufficient against a determined attacker.",
+"concept": "Cyber hygiene limitation",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 250,
+"text": "INL recommends identifying the most critical functions (“crown jewels”), mapping the digital terrain, cutting digital pathways, adding analog/manual backups and redundancy, and using air gaps.",
+"concept": "INL mitigation strategy",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 251,
+"text": "The CCE (Consequence-driven Cyber-informed Engineering) process has four phases: consequence prioritisation, system‑of‑systems analysis, consequence‑based targeting, and mitigations and protections.",
+"concept": "CCE process",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 252,
+"text": "CCE is aimed at nation‑state‑level threats.",
+"concept": "Threat level",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 253,
+"text": "CIE (Cyber‑Informed Engineering) builds cybersecurity into the concept and design stage and treats cyber attack as another failure mode.",
+"concept": "CIE approach",
+"page": 13,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 254,
+"text": "Whitman's definitions: standards are detailed mandatory statements; guidelines are non‑mandatory recommendations; procedures are step‑by‑step instructions; practices are examples of actions that show compliance.",
+"concept": "Security documentation definitions",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 255,
+"text": "EISP sections include a statement of purpose, information security elements, need for security, roles and responsibilities, and reference to other standards.",
+"concept": "EISP structure",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 256,
+"text": "\"Authorized access and usage of equipment\" is an ISSP section, not an EISP section.",
+"concept": "ISSP section",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 257,
+"text": "For a policy to be enforceable it must be disseminated, readable, understood, agreed to, and uniformly enforced.",
+"concept": "Policy enforceability criteria",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 258,
+"text": "ISSPS can be managed as independent documents, a single comprehensive document, or a modular document.",
+"concept": "ISSPS management approaches",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 259,
+"text": "SysSPs can be developed with or before ISSPs.",
+"concept": "SysSP development timing",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 260,
+"text": "Managerial guidance SysSPs state management's intent from a business view; technical specification SysSPs are the ACLs and configuration rules.",
+"concept": "SysSP types",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 261,
+"text": "A capability table lists what each user can access; an ACL lists who can access each asset.",
+"concept": "Access control artifacts",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 262,
+"text": "Configuration rules govern how a security system reacts to data it receives.",
+"concept": "Configuration rules",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 263,
+"text": "Cyber hygiene refers to routine practices for digital health, while cybersecurity is the broader strategy.",
+"concept": "Cyber hygiene vs cybersecurity",
+"page": 14,
+"section": "Article: \"Internet Insecurity\" (Andrew Bochman, HBR)"
+},
+{
+"idx": 264,
+"text": "Risk management is proactive and its unit of analysis is the asset.",
+"concept": "Risk management scope",
+"page": 15,
+"section": "Week 6: Risk management"
+},
+{
+"idx": 265,
+"text": "Risk management consists of three phases: identification, assessment, and control.",
+"concept": "Risk management phases",
+"page": 15,
+"section": "Week 6: Risk management"
+},
+{
+"idx": 266,
+"text": "The goal of risk management is to reduce risk, not to eliminate it.",
+"concept": "Risk management goal",
+"page": 15,
+"section": "Week 6: Risk management"
+},
+{
+"idx": 267,
+"text": "Residual risk is the risk that remains after current protections are applied.",
+"concept": "Residual risk",
+"page": 15,
+"section": "Week 6: Risk management"
+},
+{
+"idx": 268,
+"text": "Risk is calculated as loss frequency times loss magnitude minus the percentage mitigated by current controls plus measurement uncertainty.",
+"concept": "Risk formula",
+"page": 15,
+"section": "Week 6: Risk management"
+},
+{
+"idx": 269,
+"text": "Attack surface (attack vector) is a two‑dimensional picture with threats on one axis and assets on the other.",
+"concept": "Attack surface model",
+"page": 15,
+"section": "Ideas behind risk management"
+},
+{
+"idx": 270,
+"text": "Equifax's 2017 breach has been charted using the attack surface model.",
+"concept": "Equifax breach analysis",
+"page": 15,
+"section": "Ideas behind risk management"
+},
+{
+"idx": 271,
+"text": "Residual risk remains after base protection, extra safeguards, and closing vulnerabilities.",
+"concept": "Residual risk sources",
+"page": 15,
+"section": "Ideas behind risk management"
+},
+{
+"idx": 272,
+"text": "Risk assessment determines loss frequency, evaluates loss magnitude, calculates risk, and assesses risk acceptability.",
+"concept": "Risk assessment tasks",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 273,
+"text": "Risk control selects a strategy, justifies it with cost‑benefit analysis, implements it, and monitors it continuously.",
+"concept": "Risk control tasks",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 274,
+"text": "Assets are categorised into six types: people, procedures, data, software, hardware, and networking.",
+"concept": "Asset categories",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 275,
+"text": "Each asset is assigned a tag or ID with attributes such as name, IP address, MAC address, type, serial number, manufacturer, version, location, and owner.",
+"concept": "Asset tagging",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 276,
+"text": "People assets receive a security clearance level, and data assets receive attributes like owner, creator, size, storage location, online/offline status, and backup status.",
+"concept": "Asset attribute details",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 277,
+"text": "Data classification levels for a business include public, for official use only, sensitive, and classified.",
+"concept": "Data classification business",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 278,
+"text": "The US military data classification levels are unclassified, sensitive but unclassified, confidential, secret, and top secret.",
+"concept": "Data classification military",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 279,
+"text": "Asset value is based on business impact rather than purchase price.",
+"concept": "Asset valuation",
+"page": 15,
+"section": "Assets"
+},
+{
+"idx": 280,
+"text": "Weighted factor analysis scores each asset against criteria such as impact on revenue, profitability, and public image to produce a score out of 100.",
+"concept": "Weighted factor analysis",
+"page": 16,
+"section": "Assets"
+},
+{
+"idx": 281,
+"text": "A customer order via SSL was scored 100 because without it the business would stop.",
+"concept": "Asset criticality example",
+"page": 16,
+"section": "Assets"
+},
+{
+"idx": 282,
+"text": "Threat intelligence comes from outside the firm",
+"concept": "Threat intelligence source",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 283,
+"text": "Asset valuation is done internally",
+"concept": "Asset valuation",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 284,
+"text": "Threats are grouped into twelve categories",
+"concept": "Threat categories",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 285,
+"text": "Compromises to intellectual property include piracy and copyright infringement",
+"concept": "Intellectual property compromise",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 286,
+"text": "Deviations in quality of service include power or ISP outages",
+"concept": "Quality of service deviation",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 287,
+"text": "Espionage or trespass includes unauthorised access or data collection and insider betrayal",
+"concept": "Espionage",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 288,
+"text": "Forces of nature include fire, flood, and earthquake",
+"concept": "Natural forces",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 289,
+"text": "Human error or failure includes accidents and employee mistakes",
+"concept": "Human error",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 290,
+"text": "Information extortion includes blackmail threat of disclosure and ransomware",
+"concept": "Information extortion",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 291,
+"text": "Sabotage or vandalism includes damage to or destruction of systems or information",
+"concept": "Sabotage",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 292,
+"text": "Software attacks include viruses, worms, and DoS",
+"concept": "Software attacks",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 293,
+"text": "Technical hardware failures include equipment failure",
+"concept": "Hardware failures",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 294,
+"text": "Technical software failures include bugs and code problems",
+"concept": "Software failures",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 295,
+"text": "Technological obsolescence includes running critical systems on out-of-date software such as Windows 8",
+"concept": "Obsolescence",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 296,
+"text": "Theft is defined as illegal confiscation of equipment or information",
+"concept": "Theft",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 297,
+"text": "Threats can be ranked by weighted rank calculated as mean times weight according to a Communications of the ACM survey",
+"concept": "Threat ranking",
+"page": 16,
+"section": "Threats"
+},
+{
+"idx": 298,
+"text": "A vulnerability always belongs to a specific asset–threat pair",
+"concept": "Vulnerability assignment",
+"page": 16,
+"section": "Vulnerabilities and the TVA worksheet"
+},
+{
+"idx": 299,
+"text": "The TVA worksheet arranges threats on one axis and assets on the other, with each cell recording vulnerabilities",
+"concept": "TVA worksheet",
+"page": 16,
+"section": "Vulnerabilities and the TVA worksheet"
+},
+{
+"idx": 300,
+"text": "In the TVA worksheet the top-left cells are the most critical",
+"concept": "TVA worksheet priority",
+"page": 16,
+"section": "Vulnerabilities and the TVA worksheet"
+},
+{
+"idx": 301,
+"text": "Loss Frequency (LF) equals likelihood of attack multiplied by probability of success",
+"concept": "Loss Frequency",
+"page": 16,
+"section": "Calculating risk"
+},
+{
+"idx": 302,
+"text": "Loss Magnitude (LM) equals asset value multiplied by percentage of asset lost (exposure)",
+"concept": "Loss Magnitude",
+"page": 16,
+"section": "Calculating risk"
+},
+{
+"idx": 303,
+"text": "Risk is calculated as LF times LM minus the percentage risk mitigated by current controls plus measurement uncertainty",
+"concept": "Risk calculation",
+"page": 16,
+"section": "Calculating risk"
+},
+{
+"idx": 304,
+"text": "The uncertainty was calculated as 25% of 2 equals 0.5",
+"concept": "Uncertainty calculation",
+"page": 17,
+"section": "Calculating risk"
+},
+{
+"idx": 305,
+"text": "In practice risk is often assessed qualitatively because good numbers are hard to get",
+"concept": "Risk assessment practice",
+"page": 17,
+"section": "Calculating risk"
+},
+{
+"idx": 306,
+"text": "Newhouse Cheese Company was founded in 1811 by Cole Newhouse, an immigrant from Wales",
+"concept": "Company history",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 307,
+"text": "The fifth-generation CEO of Newhouse Cheese Company is Chadwick (Chad) Newhouse",
+"concept": "Company leadership",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 308,
+"text": "A ransomware incident involved hackers shutting down a temperature‑control device and claiming to have the secret recipes",
+"concept": "Ransomware incident",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 309,
+"text": "Chadwick Newhouse wired $49,999 to the hackers on his lawyer's advice",
+"concept": "Ransomware payment",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 310,
+"text": "CISO Frank Armen wanted more intrusion monitoring",
+"concept": "CISO request",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 311,
+"text": "The firm had already spent about $6 million while breaches rose",
+"concept": "Security spending",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 312,
+"text": "Deputy Sara asked why the systems were online and suggested putting humans back in the loop",
+"concept": "Operational suggestion",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 313,
+"text": "Consultant Jack Parem used a four-step CCE approach: identify critical functions, map the digital terrain, find likely attack paths, generate mitigation options",
+"concept": "CCE approach",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 314,
+"text": "Jack Parem found four pathways into the network",
+"concept": "Network pathways",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 315,
+"text": "CFO Bruce Boyle said going offline would kill the bottom line",
+"concept": "Financial concern",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 316,
+"text": "The consultant said ransomware doesn't scare him, listeria does",
+"concept": "Consultant opinion",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 317,
+"text": "A hybrid approach using least privilege, compartmentalisation, and manual backup has costs such as sunk investment, investor perception, and retraining",
+"concept": "Hybrid approach costs",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 318,
+"text": "Human error remains a risk in the hybrid approach",
+"concept": "Human error risk",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 319,
+"text": "Ransomware as a Service (RaaS) is a business model",
+"concept": "RaaS",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 320,
+"text": "Ransoms are often paid in cryptocurrency",
+"concept": "Ransom payment method",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 321,
+"text": "WannaCry is attributed to North Korea",
+"concept": "WannaCry attribution",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 322,
+"text": "NotPetya is attributed to Russia and did not unlock even after payment",
+"concept": "NotPetya details",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 323,
+"text": "Risk appetite is the quantity and nature of risk an organisation is willing to accept when trading off perfect security against unlimited accessibility",
+"concept": "Risk appetite",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 324,
+"text": "Residual risk is a combined function of a threat less threat‑reducing safeguards, a vulnerability less vulnerability‑reducing safeguards, and an asset less asset‑value‑reducing safeguards",
+"concept": "Residual risk",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 325,
+"text": "\"Specify asset vulnerabilities\" is part of risk identification, not assessment",
+"concept": "Risk identification task",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 326,
+"text": "The goal of risk assessment is a relative risk rating for each vulnerability of an asset",
+"concept": "Risk assessment goal",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 327,
+"text": "US national security classification levels: Top Secret equals exceptionally grave damage, Secret equals serious damage, Confidential equals damage",
+"concept": "Security classification",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 328,
+"text": "Risk identification involves recognising, enumerating and documenting risks",
+"concept": "Risk identification definition",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 329,
+"text": "Risk assessment involves determining the extent of exposure",
+"concept": "Risk assessment definition",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 330,
+"text": "Risk control involves applying safeguards to reduce risk to an acceptable level",
+"concept": "Risk control definition",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 331,
+"text": "Risk management is the whole process encompassing identification, assessment, and control",
+"concept": "Risk management definition",
+"page": 17,
+"section": "Case: Protecting the Cheddar (HBR)"
+},
+{
+"idx": 332,
+"text": "Cyberspace was built on trust and cooperation, which makes security hard",
+"concept": "Cyberspace foundation",
+"page": 18,
+"section": "Week 7: Industry perspective: threats, solutions, challenges"
+},
+{
+"idx": 333,
+"text": "Five security principles are CIA plus accountability plus auditability (non‑repudiation)",
+"concept": "Security principles",
+"page": 18,
+"section": "Week 7: Industry perspective: threats, solutions, challenges"
+},
+{
+"idx": 334,
+"text": "Technical basics include protection rings, symmetric vs public‑key encryption, hashing, OSI layers, TCP vs UDP, firewalls, DMZ, VPN",
+"concept": "Technical basics",
+"page": 18,
+"section": "Week 7: Industry perspective: threats, solutions, challenges"
+},
+{
+"idx": 335,
+"text": "The only truly secure system is switched off, unplugged, locked in a titanium-lined safe, buried in a concrete bunker, surrounded by nerve gas and very highly paid armed guards",
+"concept": "Secure system description",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 336,
+"text": "Even a system that is switched off, unplugged, locked in a titanium-lined safe, buried in a concrete bunker, surrounded by nerve gas and armed guards is not guaranteed to be secure",
+"concept": "Security uncertainty",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 337,
+"text": "Internet protocols such as TCP/IP and BGP routing were designed for cooperation and trust and they do not validate",
+"concept": "Internet protocol design",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 338,
+"text": "Reported statistics cover only 20–30% of attacks",
+"concept": "Attack reporting coverage",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 339,
+"text": "In digital security, we build the house first and the compound wall later",
+"concept": "Security development approach",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 340,
+"text": "The first cyber attack is usually traced to the Cold War and involved a logic bomb planted in Canadian-sourced control software that destroyed a Soviet gas pipeline",
+"concept": "First cyber attack",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 341,
+"text": "Cyberspace has always been in a \"no war, no peace\" state",
+"concept": "Cyberspace state",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 342,
+"text": "A definition used for cybersecurity is a body of technologies, processes and practices to protect individuals and organisations from cyber crime and now cyber warfare",
+"concept": "Cybersecurity definition",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 343,
+"text": "Five principles of cybersecurity are confidentiality, integrity, availability, accountability, and auditability",
+"concept": "Cybersecurity principles",
+"page": 18,
+"section": "Why cyberspace is hard to secure"
+},
+{
+"idx": 344,
+"text": "An operating system is the interface between the human and the hardware for input, output, and compute",
+"concept": "Operating system role",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 345,
+"text": "All battles are fought in the applications and operating system space",
+"concept": "Security battle arena",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 346,
+"text": "Kernel space and user space are distinct areas in an operating system",
+"concept": "Kernel vs user space",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 347,
+"text": "Protection rings are a hierarchy of privileges in an operating system, with Ring 0 being the most privileged and providing full hardware control",
+"concept": "Protection rings",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 348,
+"text": "Rings 1–3 are restricted privilege levels typically used for user programs, with Ring 3 being the usual level for user programs",
+"concept": "Protection rings levels",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 349,
+"text": "Attackers seek kernel‑level privilege so they can act as the watchman",
+"concept": "Attacker privilege goal",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 350,
+"text": "Symmetric encryption uses one shared key for both encryption and decryption",
+"concept": "Symmetric encryption",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 351,
+"text": "A problem with symmetric encryption is how to share the key safely",
+"concept": "Symmetric key distribution",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 352,
+"text": "If a symmetric key is captured later, every past message encrypted with that key can be decrypted",
+"concept": "Symmetric key compromise",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 353,
+"text": "The cracking of Germany's Enigma helped the Allies win WWII",
+"concept": "Enigma cracking impact",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 354,
+"text": "Public‑key (asymmetric) encryption encrypts with the recipient's public key and only the recipient's private key can decrypt",
+"concept": "Public‑key encryption",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 355,
+"text": "Hash functions are one‑way functions that produce a fixed‑length output for any input",
+"concept": "Hash function definition",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 356,
+"text": "Changing a single bit of input to a hash function causes the entire hash output to change",
+"concept": "Hash avalanche effect",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 357,
+"text": "Hash functions are used to check integrity, such as the MD5 value shown next to a download",
+"concept": "Hash for integrity",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 358,
+"text": "Hash functions are used in forensics",
+"concept": "Hash in forensics",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 359,
+"text": "The OSI model has seven layers: physical, data link, network, transport, session, presentation, and application",
+"concept": "OSI model",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 360,
+"text": "A port identifies a process with a network connection",
+"concept": "Network port purpose",
+"page": 18,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 361,
+"text": "TCP provides reliable, ordered delivery with acknowledgements, is slower, and is used for files",
+"concept": "TCP characteristics",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 362,
+"text": "UDP provides fast delivery with no guarantees and is used for streaming, audio and video calls",
+"concept": "UDP characteristics",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 363,
+"text": "Network access control technologies such as LDAP, Kerberos, and RADIUS identify every user on a network",
+"concept": "Network access control",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 364,
+"text": "A firewall is a security guard at the network's entry and exit enforcing rules",
+"concept": "Firewall function",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 365,
+"text": "Firewalls at higher OSI layers inspect more and cost more",
+"concept": "Firewall layering",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 366,
+"text": "A DMZ (demilitarised zone) is a buffer zone between the internet and the internal network, reached through a proxy",
+"concept": "DMZ purpose",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 367,
+"text": "Unpatched routers and firewalls are described as \"cracks in the wall\"",
+"concept": "Unpatched device risk",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 368,
+"text": "A VPN (virtual private network) creates an encrypted tunnel over the internet that makes a remote user part of the office network",
+"concept": "VPN function",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 369,
+"text": "For a hacker a VPN is the \"key to the kingdom\"",
+"concept": "VPN security risk",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 370,
+"text": "A group is only as strong as its weakest member",
+"concept": "Group security principle",
+"page": 19,
+"section": "Technical concepts for managers"
+},
+{
+"idx": 371,
+"text": "The cyber kill chain consists of Reconnaissance, Weaponization, Delivery, Exploitation, Installation, Command & Control, and Actions on objectives",
+"concept": "Cyber kill chain",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 372,
+"text": "The cyber kill chain is compared to a commando raid involving reconnaissance, choosing weapons, getting in, staying in, and reporting back",
+"concept": "Kill chain analogy",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 373,
+"text": "Untargeted attacks use mass emails and spread through anyone who clicks",
+"concept": "Untargeted attack method",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 374,
+"text": "Targeted attacks, such as espionage, focus on a specific victim, are more expensive, and carry higher risk of exposure",
+"concept": "Targeted attack characteristics",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 375,
+"text": "A vulnerability is the weak point or thinnest spot of a bunker",
+"concept": "Vulnerability definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 376,
+"text": "An exploit is the weaponised means to break through a vulnerability",
+"concept": "Exploit definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 377,
+"text": "A payload is what does the damage once inside and is the deadliest part that antivirus primarily looks for",
+"concept": "Payload definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 378,
+"text": "A Word macro vulnerability can be an exploit that downloads code, whose payload installs a RAT",
+"concept": "Macro exploit example",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 379,
+"text": "Malware is a general term for malicious software",
+"concept": "Malware definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 380,
+"text": "A Trojan is malware that gives the attacker a back door and can also deliver ransomware",
+"concept": "Trojan definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 381,
+"text": "RAT stands for remote administration tool; legitimate examples include TeamViewer and malicious ones are sold on the dark web with subscriptions",
+"concept": "RAT description",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 382,
+"text": "Key loggers surged after Covid",
+"concept": "Keylogger trend",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 383,
+"text": "A stealer such as Vidar steals saved passwords",
+"concept": "Stealer malware",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 384,
+"text": "The Qbot Trojan uses a zip attachment to evade email scanners, an Excel file with macros to download a DLL, achieves persistence, and reports to a command and control server",
+"concept": "Qbot Trojan behavior",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 385,
+"text": "Phishing is a random email attack while spear phishing is researched, targeted, and the attacker wants you",
+"concept": "Phishing types",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 386,
+"text": "DoS and DDoS are volumetric attacks that exhaust bandwidth or connections",
+"concept": "DoS/DDoS definition",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 387,
+"text": "ENISA's top threats list includes malware, web‑based attacks, phishing, web‑app attacks, spam, DoS, identity theft, data breaches, insider threats, botnets, physical damage/theft/loss, information leakage, ransomware, cyber espionage, and cryptojacking",
+"concept": "ENISA top threats",
+"page": 19,
+"section": "How attacks work"
+},
+{
+"idx": 388,
+"text": "APT stands for Advanced Persistent Threat and refers to well-funded state or criminal groups that do not give up",
+"concept": "Advanced Persistent Threat",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 389,
+"text": "SideCopy is a Pakistan-linked fake version of a government email-security app",
+"concept": "SideCopy example",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 390,
+"text": "Lapsus$ is associated with Microsoft name DEV-0537 and recruits insiders over Telegram",
+"concept": "Lapsus$ example",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 391,
+"text": "Attribution of cyber attacks is very hard because a server in a country does not prove that country performed the attack",
+"concept": "Attribution difficulty",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 392,
+"text": "Critical Information Infrastructure (CII) is defined as facilities, systems or functions whose incapacity or destruction would have a debilitating impact on national security, governance, economy and social well‑being",
+"concept": "Critical Information Infrastructure",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 393,
+"text": "CII is defined under the IT Act Section 70",
+"concept": "CII legal definition",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 394,
+"text": "NCIIPC is the National Critical Information Infrastructure Protection Centre and is the nodal agency for protection before an attack",
+"concept": "NCIIPC role",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 395,
+"text": "Sectors classified as critical include power & energy, banking, financial services & insurance, telecom, transport, government, and strategic & public enterprises",
+"concept": "Critical sectors",
+"page": 19,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 396,
+"text": "Critical sectors depend on each other, with power being the first",
+"concept": "Sector interdependence",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 397,
+"text": "CERT‑In is the Indian Computer Emergency Response Team and responds after an incident",
+"concept": "CERT‑In role",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 398,
+"text": "CERT‑In empanels auditors to issue a \"Safe to Host\" certificate",
+"concept": "Safe to Host certificate",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 399,
+"text": "India's National Cyber Security Policy was released in 2013 and is considered outdated",
+"concept": "National Cyber Security Policy",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 400,
+"text": "IT refers to office computers while OT refers to operational technology such as machinery and SCADA",
+"concept": "IT vs OT",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 401,
+"text": "OT attacks are considered more dangerous than IT attacks",
+"concept": "OT attack danger",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 402,
+"text": "The Maroochy sewage attack involved a fired employee using a radio",
+"concept": "Maroochy sewage attack",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 403,
+"text": "Stuxnet caused centrifuges in Iran to spin to destruction while screens showed normal speed",
+"concept": "Stuxnet attack",
+"page": 20,
+"section": "Serious attackers and national defence"
+},
+{
+"idx": 404,
+"text": "Threat intelligence can be gathered from the surface web, deep web, dark web, and internal logs",
+"concept": "Threat intelligence sources",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 405,
+"text": "SIEM stands for Security Information and Event Management and it collects, correlates and analyses logs and events",
+"concept": "SIEM function",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 406,
+"text": "A SOC is a Security Operations Center that acts on SIEM alerts and escalates through analyst levels",
+"concept": "SOC role",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 407,
+"text": "EDR stands for endpoint detection and response",
+"concept": "EDR abbreviation",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 408,
+"text": "XDR stands for extended detection and response",
+"concept": "XDR abbreviation",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 409,
+"text": "Most security failures are described as \"slips between the cup and the lip\"",
+"concept": "Security failure description",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 410,
+"text": "Machine‑learning based anomaly detection can flag logins at unusual times or without matching access‑card swipes",
+"concept": "ML anomaly detection",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 411,
+"text": "Capability of an attacker is easy to assess, while motive is hard to assess",
+"concept": "Attacker capability vs motive",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 412,
+"text": "An ethical hacker or white hat proves a flaw without exploiting it",
+"concept": "Ethical hacker",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 413,
+"text": "A black hat is a malicious hacker",
+"concept": "Black hat",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 414,
+"text": "Red teaming is a consultant‑led vulnerability analysis, penetration testing and gap analysis with only top leadership informed",
+"concept": "Red teaming",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 415,
+"text": "OSINT is public information that can be used legally",
+"concept": "OSINT",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 416,
+"text": "Leaked dark‑web data is neither reliable nor legally usable",
+"concept": "Dark‑web data reliability",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 417,
+"text": "Accountability means a person is entrusted with and answerable for equipment, keys or information",
+"concept": "Accountability",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 418,
+"text": "Auditability means actions can be traced and reviewed through records",
+"concept": "Auditability",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 419,
+"text": "HTTPS is HTTP over SSL/TLS",
+"concept": "HTTPS definition",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 420,
+"text": "Public‑key encryption does not require sharing the same key",
+"concept": "Public‑key encryption",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 421,
+"text": "Hash functions produce a fixed‑length digest and are used in intrusion and virus detection and to build pseudorandom functions",
+"concept": "Hash functions",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 422,
+"text": "Firewall types include packet filtering, stateful inspection, proxy/application‑level, and next‑generation firewalls",
+"concept": "Firewall types",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 423,
+"text": "In the cyber kill chain, reconnaissance is gathering data and scanning",
+"concept": "Kill chain reconnaissance",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 424,
+"text": "In the cyber kill chain, weaponization is building the payload",
+"concept": "Kill chain weaponization",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 425,
+"text": "In the cyber kill chain, exploitation is triggering code to breach",
+"concept": "Kill chain exploitation",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 426,
+"text": "In the cyber kill chain, C2 is a remote channel to control the system",
+"concept": "Kill chain C2",
+"page": 20,
+"section": "Defence in practice"
+},
+{
+"idx": 427,
+"text": "Risk control strategies include defense, transference, mitigation, acceptance, and termination",
+"concept": "Risk control strategies",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 428,
+"text": "Defense is not the same as mitigation",
+"concept": "Defense vs mitigation",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 429,
+"text": "ALE equals SLE multiplied by ARO",
+"concept": "Annualised loss expectancy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 430,
+"text": "CBA equals ALE prior minus ALE post minus ACS",
+"concept": "Cost‑benefit analysis",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 431,
+"text": "Authentication factors include biometrics measured by FAR, FRR and CER where they cross",
+"concept": "Biometric metrics",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 432,
+"text": "Digital signatures provide non‑repudiation",
+"concept": "Digital signatures",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 433,
+"text": "Substitution ciphers include Caesar cipher",
+"concept": "Substitution cipher",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 434,
+"text": "Active defence and hacking back occupy a grey zone with ethical considerations",
+"concept": "Active defence ethics",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 435,
+"text": "Defense strategy applies safeguards to prevent an exploit or reduce its chance of success",
+"concept": "Defense strategy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 436,
+"text": "Transference strategy shifts risk to another party such as outsourcing, managed services, cloud, or insurance",
+"concept": "Transference strategy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 437,
+"text": "Mitigation strategy reduces impact after an attack through contingency planning or hot sites",
+"concept": "Mitigation strategy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 438,
+"text": "Acceptance strategy knowingly does nothing more, justified economically",
+"concept": "Acceptance strategy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 439,
+"text": "Termination strategy stops the activity or drops the asset because protecting it costs too much",
+"concept": "Termination strategy",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 440,
+"text": "NIST SP 800‑30 and ISO 27005 use different names for the same risk control ideas",
+"concept": "Risk control frameworks",
+"page": 21,
+"section": "Five risk control strategies"
+},
+{
+"idx": 441,
+"text": "Single loss expectancy (SLE) equals asset value multiplied by exposure factor",
+"concept": "Single loss expectancy",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 442,
+"text": "Annualised loss expectancy (ALE) equals SLE multiplied by annualised rate of occurrence (ARO)",
+"concept": "Annualised loss expectancy",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 443,
+"text": "Cost‑benefit analysis (CBA) is justified when ALE post plus ACS is less than ALE prior",
+"concept": "CBA justification",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 444,
+"text": "After implementing a control, monitoring is required because estimates and actual results can differ",
+"concept": "Control monitoring",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 445,
+"text": "In a given example, SLE of ₹8 lakh and ALE of ₹12 lakh gives ARO of 1.5",
+"concept": "ARO calculation example",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 446,
+"text": "With asset value ₹15 lakh, exposure factor 40%, and two occurrences per year, ALE equals ₹12 lakh",
+"concept": "ALE calculation example",
+"page": 21,
+"section": "Cost-benefit analysis"
+},
+{
+"idx": 447,
+"text": "Orwell's 1984 was written in 1949 and deals with surveillance and power asymmetry",
+"concept": "1984",
+"page": 21,
+"section": "Access control technology"
+},
+{
+"idx": 448,
+"text": "Minority Report was released in 2002 and uses retina scans",
+"concept": "Minority Report",
+"page": 21,
+"section": "Access control technology"
+},
+{
+"idx": 449,
+"text": "In the old days identification used permanent body marks such as a mole on the right cheek",
+"concept": "Identification methods",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 450,
+"text": "Authentication factors include something you know, something you have, something you are, and something you produce",
+"concept": "Authentication factors",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 451,
+"text": "A multi‑factor login example for SBI includes a username, a password, a CAPTCHA, and an OTP sent to a phone",
+"concept": "Multi‑factor authentication",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 452,
+"text": "In Krishna district, Andhra Pradesh, labourers' fingerprint ridges were worn so the system used all five fingers for biometric identification",
+"concept": "Biometric enrollment",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 453,
+"text": "False Acceptance Rate (FAR) measures the proportion of impostors incorrectly accepted and decreases as sensitivity rises",
+"concept": "False Acceptance Rate",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 454,
+"text": "False Rejection Rate (FRR) measures the proportion of genuine users incorrectly rejected and increases as sensitivity rises",
+"concept": "False Rejection Rate",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 455,
+"text": "Crossover Error Rate (CER) is the point where FAR equals FRR and lower CER indicates a better biometric device",
+"concept": "Crossover Error Rate",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 456,
+"text": "Fingerprint, retina (blood‑vessel pattern), and iris (freckles, pits, striations, vasculature, coronas) are the most‑used biometrics",
+"concept": "Biometric modalities",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 457,
+"text": "A firewall decides which IP addresses may reach which resources",
+"concept": "Firewall",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 458,
+"text": "A DMZ holds copies of services for outsiders so they never directly touch the trusted network",
+"concept": "DMZ",
+"page": 22,
+"section": "Access control technology"
+},
+{
+"idx": 459,
+"text": "Cryptography assumes an attacker can obtain data and makes it unreadable rather than stopping access",
+"concept": "Cryptography purpose",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 460,
+"text": "WhatsApp's end‑to‑end encryption means only the sender and receiver can read messages",
+"concept": "End‑to‑end encryption",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 461,
+"text": "Plaintext, cipher, ciphertext (cryptogram), encrypt/encipher, decrypt/decipher, and key are basic cryptographic vocabulary",
+"concept": "Cryptographic terminology",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 462,
+"text": "Symmetric key encryption uses a single key that must be transmitted over an insecure network",
+"concept": "Symmetric encryption",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 463,
+"text": "A digital signature is created by signing with the sender's private key and verified with the sender's public key, providing non‑repudiation",
+"concept": "Digital signature",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 464,
+"text": "India's MCA21 e‑filing system used digital‑signature dongles",
+"concept": "MCA21",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 465,
+"text": "Digital certificates from a certificate authority prove that a website is genuine",
+"concept": "Digital certificate",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 466,
+"text": "Caesar cipher is a monoalphabetic substitution where C = (P + k) mod 26 with k = 3",
+"concept": "Caesar cipher",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 467,
+"text": "Polyalphabetic substitution uses a different shift for each letter based on a key",
+"concept": "Polyalphabetic cipher",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 468,
+"text": "Transposition ciphers rearrange the positions of bits or characters within a block according to the key",
+"concept": "Transposition cipher",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 469,
+"text": "XOR encryption combines each bit with a key bit, outputting 0 for matching bits and 1 for different bits",
+"concept": "XOR operation",
+"page": 22,
+"section": "Cryptography"
+},
+{
+"idx": 470,
+"text": "Denning defines active defence as a direct defensive action taken to destroy, nullify, or reduce the effectiveness of a cyber threat against friendly assets",
+"concept": "Active defence",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 471,
+"text": "Active defence is neither offensive nor necessarily dangerous when properly understood",
+"concept": "Active defence nature",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 472,
+"text": "In the Georgia case a Russian hacker searched government files for \"USA\" and \"NATO\" and was tricked by a fake \"NATO\" document that captured his webcam photo",
+"concept": "Georgia hack-back case",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 473,
+"text": "Arguments for hacking back include gathering intelligence, finding what was stolen, and identifying the attacker for law enforcement",
+"concept": "Hacking back pros",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 474,
+"text": "Arguments against hacking back include likely illegality, risk of harming innocent intermediaries, lack of proof it works, and potential compromise of government operations",
+"concept": "Hacking back cons",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 475,
+"text": "DHS describes a grey zone ranging from passive defence (antivirus, firewalls) through information sharing, honeypots, deception, hunting, beacons, botnet takedowns, white‑hat ransomware rescues, to offensive hack‑back, with risk and impact increasing to the right",
+"concept": "DHS grey zone",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 476,
+"text": "Denning's ethical principles for active defence are authority, third‑party immunity, necessity, proportionality, human involvement, and civil liberties",
+"concept": "Active defence ethics",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 477,
+"text": "Risk assessment is not \"identify, assess and reduce\"; that definition belongs to risk management",
+"concept": "Risk assessment definition",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 478,
+"text": "Risk identification involves recognizing, enumerating and documenting risks, including classifying, valuing and prioritising assets",
+"concept": "Risk identification",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 479,
+"text": "Identification is the act of claiming an identity, while authentication is the act of verifying that claim",
+"concept": "Identification vs authentication",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 480,
+"text": "A digital signature (private key) can be used to stop someone denying they approved a purchase order",
+"concept": "Digital signature usage",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+},
+{
+"idx": 481,
+"text": "A Certificate Authority vouches that a public key belongs to a website",
+"concept": "Certificate Authority",
+"page": 23,
+"section": "Article: Active Defense and Hacking Back (Scott Berinato, HBR)"
+}
+]

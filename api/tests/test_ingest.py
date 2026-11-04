@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.chain import merkle
 from app.config import get_settings
 from app.ingest import extractor, locator, parser, pipeline
+from app.llm import provider
 from app.ingest.pipeline import fail_interrupted_ingestions, run_ingestion
 from app.models import Document, Fact, GenerationLog, Section
 from app.routers import documents as documents_router
@@ -525,3 +526,60 @@ def test_interrupted_ingestions_become_failed(client, test_engine):
     assert fail_interrupted_ingestions(sessionmaker(bind=test_engine)) == 1
     with Session(test_engine) as db:
         assert db.scalars(select(Document.status)).all() == ["failed"]
+
+
+# --- Coverage (P02 defect fix) ---
+
+_LONG = " ".join(f"Sentence number {i} states that item {i} has property {i}." for i in range(80))
+
+
+def _generator_script(monkeypatch, handler):
+    calls = []
+
+    def fake(role, system, user, attempt=0):
+        calls.append(user)
+        return handler(user, len(calls))
+
+    monkeypatch.setattr(extractor.provider, "generate_json", fake)
+    return calls
+
+
+def _first_sentences(text: str, n: int) -> dict:
+    sentences = [s for s in text.split(". ") if s][:n]
+    quotes = [s if s.endswith(".") else s + "." for s in sentences]
+    return {"facts": [{"fact": q, "quote": q, "concept": "c"} for q in quotes]}
+
+
+def test_lazy_reply_gets_one_follow_up_on_the_rest(monkeypatch):
+    calls = _generator_script(monkeypatch, lambda user, n: _first_sentences(user, 3 if n == 1 else 200))
+    facts, _ = extractor.extract_facts(_LONG)
+    assert len(calls) == 2
+    assert calls[1].startswith("Sentence number 3 ") and _LONG.endswith(calls[1])
+    assert len(facts) == 80
+
+
+def test_full_reply_needs_no_follow_up(monkeypatch):
+    calls = _generator_script(monkeypatch, lambda user, n: _first_sentences(user, 200))
+    assert len(extractor.extract_facts(_LONG)[0]) == 80 and len(calls) == 1
+
+
+def test_reply_too_long_for_json_is_split_in_halves(monkeypatch):
+    def handler(user, n):
+        if n == 1:
+            raise provider.BadJSONError("too long")
+        return _first_sentences(user, 200)
+
+    calls = _generator_script(monkeypatch, handler)
+    facts, _ = extractor.extract_facts(_LONG)
+    assert len(calls) == 3 and calls[1] + " " + calls[2] == _LONG
+    assert len(facts) == 80
+
+
+def test_daily_limit_is_not_split(monkeypatch):
+    def handler(user, n):
+        raise provider.DailyLimitError("budget")
+
+    calls = _generator_script(monkeypatch, handler)
+    with pytest.raises(provider.DailyLimitError):
+        extractor.extract_facts(_LONG)
+    assert len(calls) == 1

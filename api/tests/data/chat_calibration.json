@@ -1,0 +1,27 @@
+{
+  "document": "samples/sample.pdf",
+  "in_scope": [
+    "What is the McCumber Cube and how many cells does it have?",
+    "What does CIA stand for in information security?",
+    "How did the attackers get into Target's network in 2013?",
+    "What is the difference between an ACL and a capability table?",
+    "What does XDR stand for?",
+    "When is a cost-benefit analysis for a control justified?",
+    "What is spear phishing and how is it different from normal phishing?",
+    "Which law protects health data in the United States?",
+    "How are standards different from policies?",
+    "What does ransomware do to a victim's machine?"
+  ],
+  "out_of_scope": [
+    "What is the capital of France?",
+    "How do I bake sourdough bread at home?",
+    "Explain how photosynthesis works in plants.",
+    "Who won the 2018 FIFA World Cup?",
+    "What is the derivative of x squared?",
+    "How does a four-stroke car engine work?",
+    "What is the boiling point of water at sea level?",
+    "Can you recommend a good romantic comedy movie?",
+    "How do mRNA vaccines train the immune system?",
+    "What is the time complexity of quicksort?"
+  ]
+}

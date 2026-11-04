@@ -28,7 +28,7 @@ api/         FastAPI (Python 3.11+), sync SQLAlchemy 2, Alembic, pytest
 web/         Next.js (App Router, TypeScript, Tailwind)
 contracts/   Hardhat 2.29.1 (exact pin) + OpenZeppelin v5, Solidity ^0.8.20
 docs/        plan, spec, research, status, demo
-scripts/     dev.ps1 only (db, api, web, test)
+scripts/     dev.ps1 (Windows) and dev.sh (Linux) only (db, migrate, api, web, test; dev.sh also setup)
 samples/     sample.pdf (our real course chapter, 15–30 pages) + fixtures
 docker-compose.yml   Postgres 16 with pgvector
 ```
@@ -64,14 +64,29 @@ docker-compose.yml   Postgres 16 with pgvector
 - doc_id (on chain) = keccak256(utf-8 document UUID string)
 - quiz_hash = keccak256(canonical JSON, sorted keys, no spaces, of {"questions":[{stem, options, answer_index, fact_idxs, gate_results}] ordered by position, "salt": lowercase hex})
 
-## Commands (Windows PowerShell 5.1: no `&&`; always quote paths, the repo path contains a space)
-Shortcut: `powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 <db|api|web|test>` (sets PYTHONUTF8=1)
+## Commands
+Check the platform first: Balaji's laptop is Windows, Deepesh's is Fedora Linux. Use only the matching block.
+Always quote paths (a repo path may contain a space). Never rely on venv activation or `make`.
+
+### Linux (bash, Fedora) — venv is Python 3.12 via uv
+Shortcut: `./scripts/dev.sh <setup|db|migrate|api|web|test>` (sets PYTHONUTF8=1)
+- DB: `docker compose up -d db`
+- API: `cd api && PYTHONUTF8=1 .venv/bin/python -m uvicorn app.main:app --reload --port 8000`
+- Web: `cd web && npm run dev` (port 3000)
+- Contracts: `cd contracts && npx hardhat test` (only inside `contracts/`, or npx fetches Hardhat 3) · deploy: `npx hardhat run scripts/deploy.ts --network amoy`
+- API tests: `cd api && PYTHONUTF8=1 .venv/bin/python -m pytest -q`
+- Use `.venv/bin/python`, never the system `python3` (3.14 on Fedora, too new for this stack).
+
+### Windows (PowerShell 5.1: no `&&`)
+Shortcut: `powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1 <db|migrate|api|web|test>` (sets PYTHONUTF8=1)
 - DB: `docker compose up -d db`
 - API: `Set-Location api; $env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000`
 - Web: `Set-Location web; npm.cmd run dev` (port 3000, `NEXT_PUBLIC_API_URL=http://localhost:8000`)
 - Contracts: `Set-Location contracts; npx.cmd hardhat test` · deploy: `npx.cmd hardhat run scripts/deploy.ts --network amoy`
 - API tests: `Set-Location api; $env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m pytest -q`
-- Never rely on venv activation, `make`, `python3`, or bare `npx`/`npm`. Open text files with explicit `encoding="utf-8"`.
+- On Windows never use `python3` or bare `npx`/`npm` (use `npx.cmd`/`npm.cmd`).
+
+On both: open text files with explicit `encoding="utf-8"`.
 
 ## Env (never commit `.env`; keep `.env.example` current)
 GROQ_API_KEY, GENERATOR_BASE_URL, LLM_GENERATOR_MODEL, CHECKER_BASE_URL, LLM_CHECKER_MODEL, GEMINI_API_KEY (optional),

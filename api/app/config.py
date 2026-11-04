@@ -23,10 +23,13 @@ class Settings(BaseSettings):
     generator_tpm: int = 8000
     generator_requests_per_day: int = 1000
     generator_max_tokens: int = 0  # 0 = the provider's default
+    # Sent as reasoning_effort only when set. "low" stops gpt-oss spending its whole output on reasoning.
+    generator_reasoning_effort: str = ""
     checker_rpm: int = 25
     checker_tpm: int = 8000
     checker_requests_per_day: int = 1000
     checker_max_tokens: int = 1000  # Groq free tier limits the checker model to 1000 output tokens per minute
+    checker_reasoning_effort: str = ""
 
     database_url: str = "postgresql+psycopg://smartquiz:smartquiz@localhost:5432/smartquiz"
     jwt_secret: str = ""

@@ -7,6 +7,8 @@ import numpy as np
 from sqlalchemy import delete, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.chain.service import get_chain
+from app.config import get_settings
 from app.db import SessionLocal
 from app.ingest.extractor import PackedChunk, check_faithfulness, extract_facts, pack_chunks
 from app.ingest.hasher import embed_texts, fact_root, hash_fact
@@ -127,7 +129,16 @@ def run_ingestion(filename: str, data: bytes) -> IngestResult:
 
 
 def register_document_onchain(document: Document) -> None:
-    """SPEC section 3 step 7. P04 fills this in; it does nothing yet."""
+    """SPEC section 3 step 7: puts the fact root on chain and saves register_tx. Raises ChainError."""
+    if document.register_tx or not document.fact_root:
+        return
+    document.register_tx = get_chain().register_document(document.id, document.fact_root, document.fact_count)
+
+
+def log_chain_failure(what: str, exc: Exception) -> None:
+    # CHAIN_OPTIONAL=false is the demo setting, so a failure there is an error, not a warning.
+    level = logging.WARNING if get_settings().chain_optional else logging.ERROR
+    log.log(level, "%s: chain offline (%s)", what, exc)
 
 
 def _clear_previous_run(db: Session, document: Document) -> None:
@@ -217,10 +228,11 @@ def ingest_document(document_id: uuid.UUID, filename: str, data: bytes, session_
 
         try:
             register_document_onchain(document)
-        except Exception:
+        except Exception as exc:
             # SPEC: a chain failure does not block. register_tx stays null, chain_status is offline.
             db.rollback()
-            log.exception("chain registration failed for document %s", document_id)
+            document.register_tx = None
+            log_chain_failure(f"registration of document {document_id}", exc)
         document.status = "ready"
         db.commit()
 

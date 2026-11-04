@@ -2,10 +2,17 @@
 import json
 from dataclasses import dataclass
 
+from app.ingest.locator import locate
 from app.ingest.prompts import CHECK_FAITHFULNESS_SYSTEM, EXTRACT_FACTS_SYSTEM
 from app.llm import provider
 
 CHUNK_CHARS = 6000
+# A reply whose quotes stop before this share of the text gets one follow-up call on the rest.
+COVERAGE_MIN = 0.75
+# ... unless the rest is this short, so short test passages never trigger extra calls.
+MIN_REST_CHARS = 1000
+# A reply too long for valid JSON is retried on two halves, at most this many times deep.
+MAX_SPLIT_DEPTH = 2
 SECTION_SEPARATOR = "\n\n"
 FAITHFUL = "FAITHFUL"
 NO_VERDICT_REASON = "checker returned no verdict"
@@ -109,8 +116,46 @@ def _facts_list(reply) -> list | None:
     return None
 
 
-def extract_facts(chunk: str) -> tuple[list[RawFact], int]:
-    """Returns (facts, malformed item count). A wrong-shaped reply is retried once, then raises."""
+def extract_facts(text: str, depth: int = 0) -> tuple[list[RawFact], int]:
+    """Every fact of a passage: one call, plus a call on two halves if the reply is too long for valid
+    JSON, plus one follow-up call on the rest if the quotes stop early (the model sometimes stops after
+    a few facts). Returns (facts, malformed item count). Quotes are located by the caller.
+    """
+    try:
+        facts, malformed = extract_facts_once(text)
+    except provider.BadJSONError:
+        if depth >= MAX_SPLIT_DEPTH:
+            raise
+        facts, malformed = [], 0
+        for part in _halves(text):
+            part_facts, part_malformed = extract_facts(part, depth + 1)
+            facts += part_facts
+            malformed += part_malformed
+        return facts, malformed
+
+    ends = [span[1] for span in (locate(f.quote, text) for f in facts) if span]
+    last_end = max(ends, default=0)
+    rest = text[last_end:].lstrip()
+    if depth < MAX_SPLIT_DEPTH and last_end < COVERAGE_MIN * len(text) and len(rest) >= MIN_REST_CHARS:
+        more, more_malformed = extract_facts(rest, depth + 1)
+        facts += more
+        malformed += more_malformed
+    return facts, malformed
+
+
+def _halves(text: str) -> list[str]:
+    """Two parts, cut at the sentence end nearest the middle (or the nearest space)."""
+    middle = len(text) // 2
+    cuts = [i + 1 for i in range(len(text) - 1) if text[i] in ".?!" and text[i + 1] == " "]
+    cuts = cuts or [i for i, ch in enumerate(text) if ch == " "]
+    if not cuts:
+        return [text]
+    cut = min(cuts, key=lambda i: abs(i - middle))
+    return [part for part in (text[:cut].strip(), text[cut:].strip()) if part]
+
+
+def extract_facts_once(chunk: str) -> tuple[list[RawFact], int]:
+    """One extraction call. Returns (facts, malformed item count). A wrong-shaped reply is retried once, then raises."""
     items = _facts_list(provider.generate_json("generator", EXTRACT_FACTS_SYSTEM, chunk))
     if items is None:
         items = _facts_list(provider.generate_json("generator", EXTRACT_FACTS_SYSTEM, chunk, attempt=1))

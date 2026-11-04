@@ -11,14 +11,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import get_current_user
 from app.db import get_db
-from app.ingest.pipeline import ingest_document
+from app.chain.service import ChainError, explorer_url
+from app.config import get_settings
+from app.ingest.pipeline import ingest_document, log_chain_failure, register_document_onchain
 from app.models import Document, Fact, Section, User
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 ALLOWED_SUFFIXES = {".pdf", ".txt"}
-EXPLORER_TX = "https://amoy.polygonscan.com/tx/"
 
 
 class DocumentOut(BaseModel):
@@ -75,7 +76,7 @@ def _document_out(document: Document) -> DocumentOut:
         facts_unfaithful=document.facts_unfaithful,
         fact_root=document.fact_root,
         register_tx=document.register_tx,
-        explorer_url=f"{EXPLORER_TX}{document.register_tx}" if document.register_tx else None,
+        explorer_url=explorer_url(document.register_tx),
         chain_status=_chain_status(document),
         created_at=document.created_at,
     )
@@ -189,3 +190,25 @@ def get_textbook(
         parent = nodes.get(section.parent_id)
         (parent.children if parent else roots).append(nodes[section.id])
     return TextbookOut(document=_document_out(document), sections=roots)
+
+
+@router.post("/{document_id}/register", response_model=DocumentOut)
+def register_document(
+    document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> DocumentOut:
+    """Retries a failed chain registration. Already registered → returned unchanged."""
+    document = _own_document(document_id, db, user)
+    if document.status != "ready":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Document is not ready")
+    if document.register_tx:
+        return _document_out(document)
+    try:
+        register_document_onchain(document)
+    except ChainError as exc:
+        db.rollback()
+        log_chain_failure(f"registration retry of document {document_id}", exc)
+        if not get_settings().chain_optional:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, f"Chain registration failed: {exc}") from None
+        return _document_out(db.get(Document, document_id))
+    db.commit()
+    return _document_out(document)
