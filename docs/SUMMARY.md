@@ -65,9 +65,11 @@ page, quiz commit before attempt, closed-book chat, dependence score (weak resul
 | --- | --- |
 | Registry (Amoy, chain 80002) | `0x4093F5F19Eacf69Fc8144A1d39A3f6838D4dc518` |
 | Sample fact root | `0xdc79cf855291af5c7df949392bf9b29399709267b06e760ae242c6757c045a0d` |
-| Demo document | `3ce3f1e0-fb57-4d46-910f-64658822e850` (user `demo@example.com`) |
-| Demo quiz 1 | `b16a8c21-b3e9-4044-8af0-18b177d48664` (ready, not started) |
-| Issuer wallet balance | ~0.030 POL (~12 transactions); top up before the review |
+| Demo document (Windows DB, used for the review) | `6045356b-3122-46d5-8192-def96b4728fb` (user `demo@example.com`, same fact root) |
+| Demo quiz 1 (Windows DB) | `904867cf-2663-4609-b869-36adb89e2e22` (ready, committed, not started) |
+| Earlier demo IDs (Fedora DB only) | document `3ce3f1e0-fb57-4d46-910f-64658822e850`, quiz `b16a8c21-b3e9-4044-8af0-18b177d48664` |
+| Issuer wallet | `0x795572DC3409686907430dedF753EfD5d0A5ed39` (registry owner) |
+| Issuer wallet balance | ~0.015 POL on 2026-11-04 (~3–5 transactions at 0.003–0.0045 POL each); top up before the review |
 
 ## Open issues
 - **Low document dependence:** the chapter is general cyber security, so the blind checker answers many questions.
