@@ -58,7 +58,8 @@ docker-compose.yml   Postgres 16 with pgvector
    "This isn't covered in your material" + the two nearest section headings.
 4. Generation receives only target facts chosen per SPEC section 4: unused first (not the target of any earlier quiz of this user + document, even before an attempt), then last answered wrong.
    Coverage tracks the target fact only (`questions.target_fact_idx`). fingerprint per SPEC section 4, unique per user + document.
-   Backup: drop a question whose stem embedding has cosine >= 0.85 with an earlier stem for that user + document.
+   Backup: drop a question whose stem embedding has cosine >= 0.85 with an earlier stem for that user + document,
+   except earlier questions with the same target fact at a different Bloom level (retests, SPEC 9.3).
    Review mode (SPEC 9.6) is separate: it takes only FSRS cards that are due, and checks fingerprints only within the new
    quiz (repeats across reviews are expected); practice selection above is unchanged.
 5. Gates (checker model only): Gate 1 grounding, Gate 2 distractor falsity (MCQ), Gate 3 solvability, Gate 4 document

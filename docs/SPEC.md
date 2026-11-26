@@ -144,7 +144,7 @@ Distractors must be plausible and must not be true according to the cited facts.
 | gate4 dependence | checker | stem + options only (no facts) | always passes; returns choice + confidence 0–100 |
 
 dependence_score = 1 − (confidence/100 if blind choice correct else 0). `flagged_general = dependence_score < 0.3`.
-Duplicate checks after gates: fingerprint, then cosine ≥ 0.85 vs earlier stems (same user + document).
+Duplicate checks after gates: fingerprint, then cosine ≥ 0.85 vs earlier stems (same user + document), except earlier questions with the same target fact at a different `bloom_level` (retests, SPEC 9.3).
 Request budget: all target questions come from ONE generator call (attempt = 0). Targets that fail Gate 1 or 3 share ONE batched regeneration call (attempt = 1; the attempt number is part of the LLM cache key); a target that fails again is dropped. To end up with N questions, the first call may request spare targets beyond N.
 Checker responses are JSON with a short `reason`. Every gate call → one `generation_log` row.
 
@@ -261,6 +261,7 @@ version stored on the quiz; Review 1 quizzes stay v1 and must still match (regre
 Retest (tiers 2–4 and review mode): `last_correct = true` → one level up (cap `analyze`); `false` → one level down (floor `remember`).
 Tier 3 (asked, never answered): one level up. If that equals the earlier level (cap or floor), use the neighbouring level so the fingerprint differs.
 The question stores the ladder's level; the generator's echoed `bloom_level` is ignored.
+The stem cosine check (SPEC 4) does not compare a retest with earlier questions of the same target fact at another level: they ask about the same fact by design, and the fingerprint already differs. It still compares with every other earlier stem, and with the same target at the same level.
 Gate 1 output adds `"bloom":"apply"` (the checker's own judgement, no extra call; it is not told the asked level) → `gate_results.gate1.bloom`, `null` if missing or not one of the four. A mismatch is logged as a `generation_log` row `gate="bloom_mismatch"`, `passed=true`, not dropped, and is not counted in `rejected_by_gate`.
 `MetricsOut` adds `"bloom_levels":{"remember":4,"understand":3,"apply":2,"analyze":1}` and `"bloom_mismatches":2` (accepted questions; a `null` label is not a mismatch).
 

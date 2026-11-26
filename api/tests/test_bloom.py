@@ -185,3 +185,88 @@ def test_metrics_skip_questions_without_a_checker_label(client, test_engine):
 def db_logs(test_engine, gate: str) -> list[GenerationLog]:
     with Session(test_engine) as db:
         return db.scalars(select(GenerationLog).where(GenerationLog.gate == gate)).all()
+
+
+# --- the stem cosine check lets retests through (SPEC 4 / 9.3) -----------------------------
+
+from app.quiz.dedup import DuplicateChecker  # noqa: E402
+
+
+def _unit(seed: int) -> "np.ndarray":
+    import numpy as np
+
+    v = np.random.default_rng(seed).normal(size=384).astype(np.float32)
+    return v / np.linalg.norm(v)
+
+
+def _checker_with_earlier(client, test_engine, target_idx=3, bloom="remember") -> tuple[DuplicateChecker, "np.ndarray"]:
+    _, doc_id = ready_document(client)
+    v = _unit(1)
+    with Session(test_engine) as db:
+        user_id = db.scalar(text("SELECT id FROM users"))
+        quiz = Quiz(user_id=user_id, document_id=uuid.UUID(doc_id), status="ready", time_limit_sec=600)
+        db.add(quiz)
+        db.flush()
+        _add_question(db, quiz, 1, target_idx=target_idx, fact_idxs=[target_idx], bloom=bloom)
+        db.flush()
+        db.scalars(select(Question)).one().stem_embedding = v.tolist()
+        db.commit()
+        return DuplicateChecker(db, user_id, uuid.UUID(doc_id)), v
+
+
+def test_retest_with_a_near_identical_stem_at_a_new_level_is_kept(client, test_engine):
+    dup, v = _checker_with_earlier(client, test_engine)
+    assert dup.check(fingerprint([3], "understand"), v, 3, "understand") == (None, "")
+
+
+def test_same_stem_for_another_target_is_still_a_cosine_duplicate(client, test_engine):
+    dup, v = _checker_with_earlier(client, test_engine)
+    gate, reason = dup.check(fingerprint([4], "understand"), v, 4, "understand")
+    assert gate == "dup_cosine" and "1.00" in reason
+
+
+def test_same_target_same_level_other_context_is_still_a_cosine_duplicate(client, test_engine):
+    dup, v = _checker_with_earlier(client, test_engine)
+    assert dup.check(fingerprint([3, 4], "remember"), v, 3, "remember")[0] == "dup_cosine"
+
+
+def test_without_target_and_level_every_earlier_stem_is_compared(client, test_engine):
+    dup, v = _checker_with_earlier(client, test_engine)
+    assert dup.check(fingerprint([3], "understand"), v)[0] == "dup_cosine"
+
+
+def test_within_one_quiz_the_rule_is_the_same(client, test_engine):
+    dup, _ = _checker_with_earlier(client, test_engine)
+    w = _unit(2)
+    dup.add(fingerprint([5], "remember"), w, 5, "remember")
+    assert dup.check(fingerprint([5], "understand"), w, 5, "understand") == (None, "")
+    assert dup.check(fingerprint([6], "remember"), w, 6, "remember")[0] == "dup_cosine"
+
+
+def test_retests_are_accepted_end_to_end(client, test_engine):
+    """FAKE stems of a retest repeat the earlier stem (cosine about 1.0); before the fix all were dup_cosine."""
+    headers, doc_id = ready_document(client)
+    first = make_quiz(client, headers, doc_id, n=5)["id"]
+    with Session(test_engine) as db:
+        earlier = db.scalars(select(Question).where(Question.quiz_id == uuid.UUID(first)).order_by(Question.position)).all()
+        answers = [(q.answer_index + 1) % 4 for q in earlier]  # all wrong → tier 2 next time
+        levels = {q.target_fact_idx: q.bloom_level for q in earlier}
+        user_id = db.scalar(text("SELECT id FROM users"))
+        # Use up every other fact, so the next quiz has only retests.
+        filler = Quiz(user_id=user_id, document_id=uuid.UUID(doc_id), status="ready", time_limit_sec=600)
+        db.add(filler)
+        db.flush()
+        for pos, idx in enumerate(i for i in range(24) if i not in levels):
+            _add_question(db, filler, pos + 1, target_idx=idx, fact_idxs=[idx])
+        db.commit()
+    client.post(f"/quizzes/{first}/start", headers=headers)
+    client.post(f"/quizzes/{first}/attempts", json={"answers": answers, "time_taken_sec": 5}, headers=headers)
+
+    second = make_quiz(client, headers, doc_id, n=5)["id"]
+    with Session(test_engine) as db:
+        retests = db.scalars(select(Question).where(Question.quiz_id == uuid.UUID(second))).all()
+        dups = db.scalars(select(GenerationLog).where(GenerationLog.quiz_id == uuid.UUID(second), GenerationLog.gate == "dup_cosine")).all()
+    assert len(retests) == 5 and not dups
+    for q in retests:
+        assert q.target_fact_idx in levels
+        assert q.bloom_level == next_bloom(levels[q.target_fact_idx], False)

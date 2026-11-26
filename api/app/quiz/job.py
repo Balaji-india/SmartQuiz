@@ -166,12 +166,12 @@ class _Run:
             if len(questions) >= self.n:
                 continue  # a spare that is not needed: neither accepted nor rejected
             fp = fingerprint(c.fact_idxs, c.bloom_level)
-            dup_gate, reason = dup.check(fp, vector)
+            dup_gate, reason = dup.check(fp, vector, c.target_idx, c.bloom_level)
             if dup_gate:
                 self.log(c, dup_gate, False, reason)
                 self.reject(c, dup_gate, reason)
                 continue
-            dup.add(fp, vector)
+            dup.add(fp, vector, c.target_idx, c.bloom_level)
             score = gates.dependence_score(c)
             questions.append(
                 Question(

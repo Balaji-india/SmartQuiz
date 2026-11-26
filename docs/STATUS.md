@@ -324,3 +324,20 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - The checker's Bloom labels lean to "remember" (5 of 12 accepted questions mismatched), so `bloom_mismatches` mainly measures checker strictness. Worth one sentence in the report.
   - Retesting with 4 levels can return to an earlier level (right then wrong); its fingerprint can match an older question and the SPEC 4 rule drops it (seen once: `dup_fingerprint` in quiz 5).
   - No commits made: Deepesh commits and pushes.
+
+### R02 follow-up: the stem cosine check no longer blocks retests (2026-11-26, Fedora)
+- **Done:** `DuplicateChecker` (`app/quiz/dedup.py`) keeps `(target_fact_idx, bloom_level)` with every earlier stem and with each question accepted in this quiz. The cosine check skips earlier questions with the **same target fact at a different Bloom level** (the planned retests; their fingerprint already differs). It still compares with every other earlier stem, and with the same target at the same level. The fingerprint check is unchanged. `job.py` passes the candidate's target and level; without them `check()` compares everything as before. SPEC 4 + 9.3 and CLAUDE.md rule 4 ("Backup") updated.
+- **How to run:** `./scripts/dev.sh test`.
+- **Test results:** pytest **272 passed** with a local Hardhat node (266 + 6 new in `tests/test_bloom.py`: near-identical retest stem at a new level kept; same stem for another target still `dup_cosine`; same target + same level with other context still `dup_cosine`; no target/level → old behaviour; same rule within one quiz; end-to-end, 5 FAKE retests whose stems repeat the earlier ones are all accepted with no `dup_cosine`). Without the `job.py` change the end-to-end test fails (2 of 5 kept).
+- **Real run** (Groq, chain disabled, same small document `1b279f76…` and user as the R02 run):
+
+  | Quiz | Accepted | Rejected | Requests (gen + chk) | Levels before → after |
+  | --- | --- | --- | --- | --- |
+  | 6 | 4 | generator_error 8, gate2 3 | 1 + 8 | fact 0: remember (wrong) → understand (floor neighbour); facts 4, 5: remember (right) → understand; fact 1: understand (right) → apply |
+  | 7 | 5 | generator_error 9, gate2 1, dup_fingerprint 1 | 2 + 9 | fact 3: understand (wrong) → **remember**; facts 7, 6, 4, 5: understand (right) → apply |
+
+  9 retests accepted, **0 `dup_cosine`** (quizzes 1–5 before the fix: 12 of 13 duplicates were `dup_cosine`). Totals for the document: remember 7, understand 8, apply 6, analyze 0; `bloom_mismatches` 12 of 21 (the Qwen checker still labels most questions "remember").
+- **Open issues:**
+  - A retest may now repeat the earlier stem almost word for word at a new level label. It is not blocked; a stricter ceiling (e.g. cosine ≥ 0.97 still blocks) would be a new SPEC number (team decision, not done).
+  - The one `dup_fingerprint` in quiz 7 is the expected case: a level the fact had already been asked at, with the same facts.
+  - No commits made: Deepesh commits and pushes.
