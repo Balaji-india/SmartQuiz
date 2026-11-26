@@ -59,7 +59,8 @@ docker-compose.yml   Postgres 16 with pgvector
 4. Generation receives only target facts chosen per SPEC section 4: unused first (not the target of any earlier quiz of this user + document, even before an attempt), then last answered wrong.
    Coverage tracks the target fact only (`questions.target_fact_idx`). fingerprint per SPEC section 4, unique per user + document.
    Backup: drop a question whose stem embedding has cosine >= 0.85 with an earlier stem for that user + document.
-   Review mode (SPEC 9.6) is separate: it takes only FSRS cards that are due; practice selection above is unchanged.
+   Review mode (SPEC 9.6) is separate: it takes only FSRS cards that are due, and checks fingerprints only within the new
+   quiz (repeats across reviews are expected); practice selection above is unchanged.
 5. Gates (checker model only): Gate 1 grounding, Gate 2 distractor falsity (MCQ), Gate 3 solvability, Gate 4 document
    dependence (MCQ) (see SPEC 4 and 9). One generator call writes all target questions; Gate 1, 2 or 3 failures share one
    batched regeneration call, then drop. Log every gate result to `generation_log`.

@@ -4,6 +4,7 @@ One issuer wallet signs every transaction, so sends are serialised with a proces
 Only hashes leave the server. The private key is never logged.
 """
 import json
+import logging
 import threading
 import time
 import uuid
@@ -24,7 +25,10 @@ RECEIPT_TIMEOUT_SEC = 120
 RPC_TIMEOUT_SEC = 10
 LOG_LOOKBACK_BLOCKS = 9_000  # public RPCs cap eth_getLogs ranges
 # Amoy rejects tips under 25 gwei; Hardhat accepts anything.
-MIN_PRIORITY_FEE_WEI = {AMOY_CHAIN_ID: 25 * 10**9}
+# Amoy strands tips under 25 gwei; 30 matches contracts/scripts/fees.ts.
+MIN_PRIORITY_FEE_WEI = {AMOY_CHAIN_ID: 30 * 10**9}
+
+log = logging.getLogger(__name__)
 
 _send_lock = threading.Lock()
 
@@ -99,17 +103,21 @@ class ChainService:
         tip = max(tip, MIN_PRIORITY_FEE_WEI.get(self.chain_id, 10**9))
         return {"maxPriorityFeePerGas": tip, "maxFeePerGas": 2 * base + tip}
 
+    def _nonce_and_fees(self) -> dict:
+        """The confirmed nonce. Every send waits for its receipt inside _send_lock, so pending > latest means an
+        earlier tx was stranded (e.g. a base-fee spike); it is replaced at the same nonce with both fees doubled,
+        well over the ~10% nodes require, instead of queueing every later tx behind it."""
+        nonce = self.w3.eth.get_transaction_count(self.issuer, "latest")
+        fees = self._fees()
+        if self.w3.eth.get_transaction_count(self.issuer, "pending") > nonce:
+            log.warning("replacing a stranded transaction at nonce %s with doubled fees", nonce)
+            fees = {k: 2 * v for k, v in fees.items()}
+        return {"nonce": nonce, **fees}
+
     def _send(self, fn) -> str:
         with _send_lock:
             try:
-                tx = fn.build_transaction(
-                    {
-                        "from": self.issuer,
-                        "chainId": self.chain_id,
-                        "nonce": self.w3.eth.get_transaction_count(self.issuer, "pending"),
-                        **self._fees(),
-                    }
-                )
+                tx = fn.build_transaction({"from": self.issuer, "chainId": self.chain_id, **self._nonce_and_fees()})
                 tx["gas"] = int(self.w3.eth.estimate_gas(tx) * 1.2)
                 signed = self._account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)

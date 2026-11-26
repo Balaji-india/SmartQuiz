@@ -1,4 +1,5 @@
 """Ingestion with the FAKE LLM. The real keys are blanked so these tests can never call a provider."""
+import json
 import io
 import time
 from pathlib import Path
@@ -44,7 +45,7 @@ def _upload(client, headers, name="notes.txt", data=NOTES):
 
 
 def _unfaithful_when(monkeypatch, phrase: str, reason="adds a claim"):
-    def fake(pairs):
+    def fake(pairs, sections=None):
         return [extractor.Verdict(phrase not in fact, reason if phrase in fact else "ok") for _, fact in pairs]
 
     monkeypatch.setattr(pipeline, "check_faithfulness", fake)
@@ -220,7 +221,7 @@ def test_oversized_section_spans_several_chunks_in_order():
 def test_one_checker_call_per_chunk(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        pipeline, "check_faithfulness", lambda pairs: calls.append(len(pairs)) or [extractor.Verdict(True, "ok")] * len(pairs)
+        pipeline, "check_faithfulness", lambda pairs, sections=None: calls.append(len(pairs)) or [extractor.Verdict(True, "ok")] * len(pairs)
     )
     run_ingestion("notes.txt", NOTES)
     assert calls == [2]  # two sections, one chunk, one batch
@@ -583,3 +584,37 @@ def test_daily_limit_is_not_split(monkeypatch):
     with pytest.raises(provider.DailyLimitError):
         extractor.extract_facts(_LONG)
     assert len(calls) == 1
+
+
+# --- gate0 heading path (SPEC 9.1) ---
+
+
+def test_heading_path_joins_ancestors():
+    secs = [
+        parser.ParsedSection("3 Threats", 1, 0, 1, 1, "a"),
+        parser.ParsedSection("3.2 Malware", 2, 1, 1, 1, "b", parent_position=0),
+        parser.ParsedSection("Worms", 3, 2, 1, 1, "c", parent_position=1),
+    ]
+    assert pipeline.heading_path(secs, 2) == "3 Threats > 3.2 Malware > Worms"
+    assert pipeline.heading_path(secs, 0) == "3 Threats"
+
+
+def test_gate0_payload_carries_the_section(monkeypatch):
+    sent = []
+
+    def fake_generate_json(role, system, user, attempt=0):
+        if role == "checker":
+            sent.append(json.loads(user))
+            return {"faithful": [i["id"] for i in sent[-1]["items"]], "not_faithful": []}
+        return provider._fake(role, system, user, attempt)
+
+    monkeypatch.setattr(extractor.provider, "generate_json", fake_generate_json)
+    run_ingestion("notes.txt", NOTES)
+    items = [item for payload in sent for item in payload["items"]]
+    assert items and all(isinstance(i["section"], str) and i["section"] for i in items)
+    assert extractor.check_faithfulness([("q", "f")]) and sent[-1]["items"][0]["section"] == ""
+
+
+def test_check_faithfulness_rejects_mismatched_sections():
+    with pytest.raises(ValueError):
+        extractor.check_faithfulness([("q", "f")], sections=[])

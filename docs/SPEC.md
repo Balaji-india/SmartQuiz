@@ -298,7 +298,9 @@ as usual. Fewer due than requested → a shorter quiz; none due → 409 `{"detai
 ```
 GET /documents/{id}/review -> {"due_now":4,"next_due":"iso|null","cards":37}
 ```
-Practice selection (section 4, CLAUDE.md rule 4) is unchanged.
+Practice selection (section 4, CLAUDE.md rule 4) is unchanged. In review mode the fingerprint check (section 4) runs only
+within the new quiz, not against earlier quizzes: a fact reviewed many times runs out of the 4 Bloom levels, and a
+repeat question is expected there. The stem-embedding backup check is skipped in review mode for the same reason.
 
 ### 9.7 R06 — Open-ended (short-answer) questions
 DB: `questions.qtype` (`mcq`/`short`, default `mcq`), `questions.model_answer text null`, `questions.dependence_score`
@@ -356,6 +358,7 @@ Hashes (lowercase hex with 0x):
 - concept_hash = keccak256(utf-8(document UUID + "|" + concept)); evidence_hash = keccak256(concatenated bytes of the
   sorted attempt hashes that tested the concept); doc_id as section 8.
 - Custodial address: the address of private key keccak256(utf-8(CUSTODY_SECRET + "|" + user UUID)). The key is never stored or used to sign.
+  Custodial mints are refused (503) while `CUSTODY_SECRET` is empty; it must never change once a custodial badge exists.
 Only hashes and addresses go on chain (CLAUDE.md rule 6).
 
 ```

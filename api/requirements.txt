@@ -1,24 +1,25 @@
 # CPU-only PyTorch: install this index's torch BEFORE sentence-transformers, so no GPU files are downloaded.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
-fastapi
-uvicorn[standard]
-sqlalchemy>=2
-alembic
-psycopg[binary]
-pgvector
-pydantic-settings
-python-multipart
-pyjwt
-argon2-cffi
-email-validator
-openai
-sentence-transformers
-pymupdf
-rapidfuzz
-web3
-eth-abi
-numpy
-reportlab
-pytest
-httpx
+# Pinned 2026-11-26 from the working Fedora venv (R00). Bump deliberately, then rerun the full test suite.
+torch==2.15.0+cpu
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.8
+alembic==1.20.1
+psycopg[binary]==3.3.8
+pgvector==0.5.1
+pydantic-settings==2.16.2
+python-multipart==0.0.33
+pyjwt==2.15.1
+argon2-cffi==25.1.0
+email-validator==2.3.0
+openai==3.45.0
+sentence-transformers==6.2.0
+pymupdf==2.1
+rapidfuzz==3.14.6
+web3==8.0.0
+eth-abi==6.0.0
+numpy==2.5.4
+reportlab==5.1.0
+pytest==9.2.0
+httpx==0.28.1

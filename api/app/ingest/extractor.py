@@ -192,16 +192,25 @@ def _verdicts_by_id(reply) -> dict[int, Verdict] | None:
     return verdicts
 
 
-def check_faithfulness(pairs: list[tuple[str, str]]) -> list[Verdict]:
-    """pairs: (source quote, fact). One checker call per chunk, retried once if results are missing.
+def check_faithfulness(pairs: list[tuple[str, str]], sections: list[str] | None = None) -> list[Verdict]:
+    """pairs: (source quote, fact); sections: each pair's heading path (SPEC 9.1), context only.
+    One checker call per chunk, retried once if results are missing.
 
     The reply lists ids rather than one object per fact, to fit Groq's output-token limit on a large batch.
     Fails closed: an item still without a verdict counts as not faithful.
     """
+    if sections is not None and len(sections) != len(pairs):
+        raise ValueError("sections must have one heading path per pair")
     if not pairs:
         return []
     user = json.dumps(
-        {"items": [{"id": i, "quote": q, "fact": f} for i, (q, f) in enumerate(pairs)]}, ensure_ascii=False
+        {
+            "items": [
+                {"id": i, "section": sections[i] if sections is not None else "", "quote": q, "fact": f}
+                for i, (q, f) in enumerate(pairs)
+            ]
+        },
+        ensure_ascii=False,
     )
     found = _verdicts_by_id(provider.generate_json("checker", CHECK_FAITHFULNESS_SYSTEM, user))
     if found is None or len(set(found) & set(range(len(pairs)))) < len(pairs):

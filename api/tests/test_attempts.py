@@ -12,6 +12,7 @@ from app.chain import quizhash
 from app.chain.service import chain_id_of
 from app.config import get_settings
 from app.models import Fact, FactCoverage, Question, Quiz
+from tests.conftest import signup_headers
 from tests.quiz_helpers import make_quiz, ready_document
 
 
@@ -233,3 +234,40 @@ def test_once_unused_facts_run_out_wrong_answers_come_first(client, test_engine)
         targets = select_targets(db, user_id, uuid.UUID(doc_id), 3, "seed")
     assert {t.fact.idx for t in targets} == wrong_targets
     assert all(t.tier == 2 and t.bloom_level != bloom[t.fact.idx] for t in targets)
+
+
+# --- GET /attempts/{id} and QuizOut.attempt_id (SPEC 9.1) ------------------------------------
+
+
+def test_attempt_id_is_null_before_submit_and_set_after(client):
+    headers, doc_id = ready_document(client)
+    quiz_id = make_quiz(client, headers, doc_id)["id"]
+    started = client.post(f"/quizzes/{quiz_id}/start", headers=headers).json()
+    assert started["attempt_id"] is None
+    result = client.post(f"/quizzes/{quiz_id}/attempts", json={"answers": [0] * 5, "time_taken_sec": 5}, headers=headers).json()
+    assert client.get(f"/quizzes/{quiz_id}", headers=headers).json()["attempt_id"] == result["attempt_id"]
+
+
+def test_owner_reloads_the_same_result(client, test_engine):
+    headers, doc_id = ready_document(client)
+    quiz_id = make_quiz(client, headers, doc_id)["id"]
+    client.post(f"/quizzes/{quiz_id}/start", headers=headers)
+    answers = [0, 1, None, 2, 3]
+    submitted = client.post(f"/quizzes/{quiz_id}/attempts", json={"answers": answers, "time_taken_sec": 5}, headers=headers).json()
+    got = client.get(f"/attempts/{submitted['attempt_id']}", headers=headers)
+    assert got.status_code == 200
+    assert got.json() == submitted
+
+
+def test_other_user_and_unknown_attempt_get_404(client):
+    headers, doc_id = ready_document(client)
+    quiz_id = make_quiz(client, headers, doc_id)["id"]
+    client.post(f"/quizzes/{quiz_id}/start", headers=headers)
+    # Before submit there is no attempt to fetch.
+    assert client.get(f"/attempts/{uuid.uuid4()}", headers=headers).status_code == 404
+    attempt_id = client.post(
+        f"/quizzes/{quiz_id}/attempts", json={"answers": [0] * 5, "time_taken_sec": 5}, headers=headers
+    ).json()["attempt_id"]
+    other = signup_headers(client, "other@b.com")
+    assert client.get(f"/attempts/{attempt_id}", headers=other).status_code == 404
+    assert client.get(f"/attempts/{attempt_id}").status_code == 401

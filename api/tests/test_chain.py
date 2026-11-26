@@ -124,3 +124,32 @@ def test_register_endpoint_hides_other_users_documents(client):
     created = _upload(client, signup_headers(client, "owner@b.com"))
     other = signup_headers(client, "other@b.com")
     assert client.post(f"/documents/{created['id']}/register", headers=other).status_code == 404
+
+
+def test_stranded_transaction_is_replaced_at_the_confirmed_nonce():
+    """pending > latest means an earlier tx never mined: reuse its nonce with doubled fees instead of queueing."""
+
+    class Eth:
+        max_priority_fee = 31 * 10**9
+
+        def __init__(self, latest, pending):
+            self.counts = {"latest": latest, "pending": pending}
+
+        def get_transaction_count(self, _addr, block):
+            return self.counts[block]
+
+        def get_block(self, _):
+            return {"baseFeePerGas": 10**9}
+
+    svc = service.ChainService.__new__(service.ChainService)
+    svc._account = type("Acct", (), {"address": "0x" + "ab" * 20})()
+    svc._chain_id = service.AMOY_CHAIN_ID
+    svc.w3 = type("W3", (), {})()
+
+    svc.w3.eth = Eth(latest=7, pending=7)
+    normal = svc._nonce_and_fees()
+    assert normal == {"nonce": 7, "maxPriorityFeePerGas": 31 * 10**9, "maxFeePerGas": 33 * 10**9}
+
+    svc.w3.eth = Eth(latest=7, pending=8)
+    replaced = svc._nonce_and_fees()
+    assert replaced == {"nonce": 7, "maxPriorityFeePerGas": 62 * 10**9, "maxFeePerGas": 66 * 10**9}

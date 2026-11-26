@@ -54,6 +54,7 @@ class QuizOut(BaseModel):
     chain_status: str
     started_at: datetime | None
     submitted: bool
+    attempt_id: uuid.UUID | None
     questions: list[QuestionOut]
     generation: GenerationOut | None
 
@@ -109,8 +110,12 @@ def _questions(db: Session, quiz: Quiz) -> list[Question]:
     return db.scalars(select(Question).where(Question.quiz_id == quiz.id).order_by(Question.position)).all()
 
 
+def _attempt_id(db: Session, quiz: Quiz) -> uuid.UUID | None:
+    return db.scalar(select(Attempt.id).where(Attempt.quiz_id == quiz.id).limit(1))
+
+
 def _has_attempt(db: Session, quiz: Quiz) -> bool:
-    return db.scalar(select(func.count()).select_from(Attempt).where(Attempt.quiz_id == quiz.id)) > 0
+    return _attempt_id(db, quiz) is not None
 
 
 def _generation(db: Session, quiz: Quiz) -> GenerationOut:
@@ -129,7 +134,8 @@ def _generation(db: Session, quiz: Quiz) -> GenerationOut:
 
 
 def quiz_out(db: Session, quiz: Quiz) -> QuizOut:
-    submitted = _has_attempt(db, quiz)
+    attempt_id = _attempt_id(db, quiz)
+    submitted = attempt_id is not None
     questions = []
     if quiz.status == "ready" and quiz.started_at is not None:
         questions = [
@@ -155,9 +161,62 @@ def quiz_out(db: Session, quiz: Quiz) -> QuizOut:
         chain_status=_chain_status(quiz),
         started_at=quiz.started_at,
         submitted=submitted,
+        attempt_id=attempt_id,
         questions=questions,
         generation=None if quiz.status == "generating" else _generation(db, quiz),
     )
+
+
+def _quiz_facts(db: Session, quiz: Quiz, questions: list[Question]) -> dict[int, Fact]:
+    """Every cited and target fact of the quiz, by idx."""
+    cited = sorted({i for q in questions for i in q.fact_idxs} | {q.target_fact_idx for q in questions})
+    return {
+        f.idx: f
+        for f in db.scalars(select(Fact).where(Fact.document_id == quiz.document_id, Fact.idx.in_(cited)))
+    }
+
+
+def _build_result(
+    db: Session, facts: dict[int, Fact], questions: list[Question], answers: list[int | None], attempt_id: uuid.UUID
+) -> AttemptResult:
+    """Scores answers against the stored key. Shared by submit and GET /attempts/{id}, so both return the same shape."""
+    headings = {
+        s.id: s.heading
+        for s in db.scalars(select(Section).where(Section.id.in_({f.section_id for f in facts.values()})))
+    }
+    results, score = [], 0
+    weak: dict[str, list[int]] = {}
+    for q, chosen in zip(questions, answers):
+        correct = chosen == q.answer_index
+        score += correct
+        results.append(
+            ResultOut(
+                question_id=q.id,
+                chosen=chosen,
+                correct_index=q.answer_index,
+                correct=correct,
+                sources=[
+                    SourceOut(idx=i, text=facts[i].text, page=facts[i].page, section=headings[facts[i].section_id])
+                    for i in sorted(q.fact_idxs)
+                ],
+            )
+        )
+        if not correct:
+            target = facts[q.target_fact_idx]
+            weak.setdefault(target.concept, []).append(target.idx)
+    weak_concepts = sorted(
+        (WeakConceptOut(concept=c, wrong=len(idxs), facts=sorted(idxs)) for c, idxs in weak.items()),
+        key=lambda w: (-w.wrong, w.concept),
+    )
+    return AttemptResult(
+        attempt_id=attempt_id, score=score, total=len(questions), results=results, weak_concepts=weak_concepts
+    )
+
+
+def attempt_result(db: Session, attempt: Attempt) -> AttemptResult:
+    quiz = db.get(Quiz, attempt.quiz_id)
+    questions = _questions(db, quiz)
+    return _build_result(db, _quiz_facts(db, quiz, questions), questions, attempt.answers, attempt.id)
 
 
 def _own_quiz(quiz_id: uuid.UUID, db: Session, user: User) -> Quiz:
@@ -248,37 +307,13 @@ def submit_attempt(
     if any(a is not None and not 0 <= a <= 3 for a in body.answers):
         raise HTTPException(422, "Each answer is 0-3 or null")
 
-    cited = sorted({i for q in questions for i in q.fact_idxs})
-    facts = {
-        f.idx: f
-        for f in db.scalars(select(Fact).where(Fact.document_id == quiz.document_id, Fact.idx.in_(cited)))
-    }
-    headings = {
-        s.id: s.heading
-        for s in db.scalars(select(Section).where(Section.id.in_({f.section_id for f in facts.values()})))
-    }
-
-    results, score = [], 0
-    weak: dict[str, list[int]] = {}
+    attempt_id = uuid.uuid4()
+    facts = _quiz_facts(db, quiz, questions)
+    results = _build_result(db, facts, questions, body.answers, attempt_id)
     now = datetime.now(timezone.utc)
-    for q, chosen in zip(questions, body.answers):
-        correct = chosen == q.answer_index
-        score += correct
-        results.append(
-            ResultOut(
-                question_id=q.id,
-                chosen=chosen,
-                correct_index=q.answer_index,
-                correct=correct,
-                sources=[
-                    SourceOut(idx=i, text=facts[i].text, page=facts[i].page, section=headings[facts[i].section_id])
-                    for i in sorted(q.fact_idxs)
-                ],
-            )
-        )
+    for q, r in zip(questions, results.results):
+        correct = r.correct
         target = facts[q.target_fact_idx]
-        if not correct:
-            weak.setdefault(target.concept, []).append(target.idx)
         # Coverage tracks the target fact only, never the context facts.
         stmt = insert(FactCoverage).values(
             user_id=user.id, fact_id=target.id, times_tested=1, last_correct=correct, last_bloom=q.bloom_level, updated_at=now
@@ -296,17 +331,14 @@ def submit_attempt(
         )
 
     attempt = Attempt(
+        id=attempt_id,
         quiz_id=quiz.id,
         user_id=user.id,
         answers=list(body.answers),
-        score=score,
+        score=results.score,
         total=len(questions),
         time_taken_sec=min(body.time_taken_sec, quiz.time_limit_sec + TIME_GRACE_SEC),
     )
     db.add(attempt)
     db.commit()
-    weak_concepts = sorted(
-        (WeakConceptOut(concept=c, wrong=len(idxs), facts=sorted(idxs)) for c, idxs in weak.items()),
-        key=lambda w: (-w.wrong, w.concept),
-    )
-    return AttemptResult(attempt_id=attempt.id, score=score, total=len(questions), results=results, weak_concepts=weak_concepts)
+    return results

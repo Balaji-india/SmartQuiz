@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import { ethers, network } from "hardhat";
+import { amoyFees, formatFees } from "./fees";
 
 const ENV_PATH = path.resolve(__dirname, "../../.env");
 
@@ -45,7 +46,15 @@ async function main() {
     console.log(`sent 100 test ETH to issuer ${owner}`);
   }
 
-  const registry = await (await ethers.getContractFactory("SmartQuizRegistry")).deploy(owner);
+  const factory = await ethers.getContractFactory("SmartQuizRegistry");
+  let registry;
+  if (network.name === "amoy") {
+    const fees = await amoyFees(ethers.provider);
+    console.log(formatFees(fees));
+    registry = await factory.deploy(owner, fees);
+  } else {
+    registry = await factory.deploy(owner);
+  }
   await registry.waitForDeployment();
   const address = await registry.getAddress();
   console.log(`SmartQuizRegistry deployed on ${network.name} at ${address} (owner ${owner})`);

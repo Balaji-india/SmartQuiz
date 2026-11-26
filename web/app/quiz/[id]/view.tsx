@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLoad } from "@/lib/use-load";
 import { AuthedPage } from "@/components/shell";
 import { Button, ButtonLink, Card, ChainBadge, ErrorBox, Hash, Loading, NavyPanel } from "@/components/ui";
-import { createQuiz, getQuiz, getQuizProgress, startQuiz, submitAttempt } from "@/lib/api";
+import { createQuiz, getAttempt, getQuiz, getQuizProgress, startQuiz, submitAttempt } from "@/lib/api";
 import type { AttemptResult, QuizOut, QuizProgressOut } from "@/lib/types";
 
 const POLL_MS = 2000;
@@ -368,8 +368,16 @@ function Quiz() {
   const [fresh, setResult] = useState<AttemptResult | null>(null);
   const [actionError, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // After a refresh the result is read back from this tab's sessionStorage.
-  const result = fresh ?? (quiz?.submitted ? stored<AttemptResult>(`sq_result_${id}`) : null);
+  // After a refresh the result is reloaded from the API; this tab's sessionStorage is only a fallback.
+  // Not needed right after submit: the submit response is the result.
+  const attemptId = fresh ? null : (quiz?.attempt_id ?? null);
+  const {
+    data: loadedResult,
+    error: resultError,
+    reload: reloadResult,
+  } = useLoad<AttemptResult | null>(() => (attemptId ? getAttempt(attemptId) : Promise.resolve(null)), attemptId);
+  const fallback = quiz?.submitted ? stored<AttemptResult>(`sq_result_${id}`) : null;
+  const result = fresh ?? loadedResult ?? fallback;
   const error = loadError ?? actionError;
 
   const begin = async () => {
@@ -412,6 +420,10 @@ function Quiz() {
         </div>
       </Card>
     );
+  if (quiz.submitted && !result) {
+    if (resultError) return <ErrorBox message={resultError} onRetry={reloadResult} />;
+    return <Loading label="Loading your result…" />;
+  }
   if (quiz.submitted || result) return <Results quiz={quiz} result={result} />;
   if (!quiz.started_at) return <StartScreen quiz={quiz} onBegin={begin} busy={busy} />;
   return <Taking quiz={quiz} onSubmitted={onSubmitted} />;

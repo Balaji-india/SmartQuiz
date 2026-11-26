@@ -55,6 +55,17 @@ class IngestResult:
     root: str | None
 
 
+def heading_path(sections: list[ParsedSection], position: int) -> str:
+    """"3 Threats > 3.2 Malware": the section's heading after its ancestors' headings."""
+    parts, seen = [], set()
+    current: int | None = position
+    while current is not None and current not in seen:
+        seen.add(current)
+        parts.append(sections[current].heading)
+        current = sections[current].parent_position
+    return " > ".join(reversed(parts))
+
+
 def _extract_chunk(
     chunk: PackedChunk, sections: list[ParsedSection]
 ) -> tuple[list[KeptFact], list[FactCheck], int, int]:
@@ -69,12 +80,13 @@ def _extract_chunk(
         else:
             located.append((raw, *target))
 
-    # The checker sees the source span, not the model's copy of it.
+    # The checker sees the source span, not the model's copy of it, plus the heading path for context (SPEC 9.1).
     pairs = [(sections[p].text[s:e], raw.fact) for raw, p, s, e in located]
+    paths = [heading_path(sections, p) for _, p, _, _ in located]
     kept: list[KeptFact] = []
     checks: list[FactCheck] = []
     unfaithful = 0
-    for (raw, position, s, e), verdict in zip(located, check_faithfulness(pairs)):
+    for (raw, position, s, e), verdict in zip(located, check_faithfulness(pairs, paths)):
         checks.append(FactCheck(verdict.faithful, f"{raw.concept}: {verdict.reason}"))
         if not verdict.faithful:
             unfaithful += 1

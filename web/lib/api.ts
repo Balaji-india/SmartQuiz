@@ -101,6 +101,7 @@ export const getQuizProgress = (id: string) => apiFetch<QuizProgressOut>(`/quizz
 export const startQuiz = (id: string) => post<QuizOut>(`/quizzes/${id}/start`);
 export const submitAttempt = (id: string, answers: (number | null)[], time_taken_sec: number) =>
   post<AttemptResult>(`/quizzes/${id}/attempts`, { answers, time_taken_sec });
+export const getAttempt = (id: string) => apiFetch<AttemptResult>(`/attempts/${id}`);
 
 // Chat and metrics
 export const sendChat = (document_id: string, message: string) => post<ChatOut>("/chat", { document_id, message });

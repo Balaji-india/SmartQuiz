@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db import db_ok
 from app.ingest.pipeline import fail_interrupted_ingestions
 from app.quiz.job import fail_interrupted_quizzes
-from app.routers import auth, chat, documents, metrics, quizzes, verify
+from app.routers import attempts, auth, chat, documents, metrics, quizzes, verify
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(quizzes.router)
+app.include_router(attempts.router)
 app.include_router(metrics.router)
 app.include_router(chat.router)
 app.include_router(verify.router)

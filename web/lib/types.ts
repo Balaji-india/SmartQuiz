@@ -55,6 +55,7 @@ export type QuizOut = {
   chain_status: ChainStatus;
   started_at: string | null;
   submitted: boolean;
+  attempt_id: string | null;
   questions: QuestionOut[];
   generation: { candidates: number; accepted: number; rejected: number } | null;
 };

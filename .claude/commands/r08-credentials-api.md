@@ -7,7 +7,7 @@ Wire the credentials contract into the API so results, badges and educator actio
 /workflow:
 1. Migration per SPEC 9.9. api/scripts/make_educator.py <email>.
 2. attempt_hash when grading becomes final; merkle batch of unanchored final attempts; POST /educator/anchor.
-3. Badges: POST /badges (mastered check, anchor first if needed, holder = wallet_address or custodial), GET /badges, PUT /auth/me/wallet, /auth/me role + wallet.
+3. Badges: POST /badges (mastered check, anchor first if needed, holder = wallet_address or custodial; custodial refused with 503 while CUSTODY_SECRET is empty, SPEC 9.9), GET /badges, PUT /auth/me/wallet, /auth/me role + wallet.
 4. Educator: grading queue + grade (calls apply_educator_grade), documents list, cosign (EIP-712 signature with EDUCATOR_PRIVATE_KEY via eth_account, matching the contract's domain), revoke document, revoke badge (signed reason hash).
 5. Public /verify/attempt and /verify/badge; VerifyQuestionOut cosign + document_revoked. Offline → nulls (503 when CHAIN_OPTIONAL=false).
 6. MasteryOut.badge_id filled.

@@ -231,3 +231,34 @@ Every slash command appends an entry here. `/status` adds a summary block under 
 - **Finding:** the first send used Hardhat's default fee and stayed pending (Amoy needs a tip ≥ 25 gwei; the network asked ~31 gwei). Any new Hardhat script that sends on Amoy (e.g. R07 deploy) must set fees the same way; `deploy.ts` does not yet.
 - **Tests:** contracts compile; script type-checks; run live on Amoy as above.
 - **Issues:** the old issuer key can no longer register or commit; Balaji's Windows `.env` (old key) will fail on chain calls. The old wallet keeps ~0.01 POL. The public RPC `rpc-amoy.polygon.technology` was down today; `polygon-amoy-bor-rpc.publicnode.com` and `polygon-amoy.drpc.org` work.
+
+### R00 cleanup (2026-11-26, Fedora)
+- **Done:**
+  - `GET /attempts/{attempt_id}` (new `api/app/routers/attempts.py`, owner only, 404 otherwise) and `QuizOut.attempt_id` (SPEC 9.1). Submit and GET share `_build_result`, so both return the same `AttemptResult`; the attempt id is generated before scoring.
+  - Web `/quiz/[id]` reloads results with `getAttempt(quiz.attempt_id)`; sessionStorage is only the fallback.
+  - `gate0_fact` items carry `"section"` (heading path via `pipeline.heading_path`, e.g. "3 Threats > 3.2 Malware"); the faithfulness prompt says it is context only, not evidence. The sample was not re-ingested.
+  - `api/requirements.txt` pinned with `==` from the working venv (torch `2.15.0+cpu`, CPU index line kept); `uv pip install --dry-run` → no changes.
+  - `npm audit fix` (no `--force`): web 8 → 1 moderate, contracts lockfile bumps (undici 6.29.1 and one more). package.json files unchanged.
+  - Amoy fee floor in one place: `contracts/scripts/fees.ts` (tip = max(network tip, 30 gwei), max fee = 2 × base + tip), used by `deploy.ts` and `transfer-owner.ts`; `ChainService` floor raised 25 → 30 gwei to match.
+  - Issuer check (read-only): ISSUER_PRIVATE_KEY derives to `0x6fa045726eF3F0d84eb100e159517930C249b665` = registry `owner()`; balance 1.0 POL; chain id 80002.
+- **Code review fixes (`/code-review high` on b644de5, 9 findings, none skipped):**
+  - `transfer-owner.ts`: checksummed NEW_OWNER only, CONFIRM=yes required, refuses a contract address, clear error when the key is empty, `tx.wait(1, 180 s)` with nonce + hint on timeout, a rerun outbids a pending tx at the same nonce by 12.5% (or TIP_GWEI override).
+  - SPEC 9.6 + CLAUDE.md rule 4: review mode checks fingerprints (and the stem-embedding backup) only within the new quiz, so a fact reviewed past 4 Bloom levels is not dropped forever.
+  - PLAN aligned with SPEC: Bloom wrong answer = one level down (9.3), revocation needs the educator signature (9.8), attempt_hash includes grades (9.9), issuer balance line updated.
+  - `.env.example` `CUSTODY_SECRET=` empty; SPEC 9.9 and R08: custodial mints refused (503) while it is empty.
+- **Second `/code-review high` (on the R00 diff, 6 findings, none skipped):**
+  - `ChainService._send` (pre-existing): uses the confirmed nonce; if pending > latest (a stranded tx), it replaces it at that nonce with doubled fees instead of queueing every later tx behind it for 120 s each.
+  - `transfer-owner.ts`: TIP_GWEI is clamped to the 30 gwei floor; the error says to beat the stuck tip by 12.5%.
+  - Web results: a loading state while GET /attempts runs, an ErrorBox with retry if it fails, no extra fetch right after submit.
+  - Submit loads the quiz facts once (`_quiz_facts`, shared with GET /attempts).
+  - `check_faithfulness` raises ValueError when `sections` does not match `pairs`.
+  - Cache note: the gate0 prompt and payload changed, so the next ingestion of any document (including `samples/sample.pdf` via seed_demo) misses the LLM cache and pays full checker requests. Budget one full re-ingest before the R11 rehearsals.
+- **Security pass (manual; `/security-review` had no diff to review because `main` = `origin/main`):** auth (argon2, JWT HS256 with exp/sub required, empty secret → 503), owner checks on every document/quiz/metrics/chat/attempt route (same 404 for other users), upload limits (25 MB, .pdf/.txt, UTF-8 check, basename only), chain errors never pass on exception text, no key logged, verify endpoints rate-limited and 409 before submit, no `dangerouslySetInnerHTML` in the web. No new issues needing a fix.
+- **How to run:** `./scripts/dev.sh test`; contracts `cd contracts && npx hardhat test`; web `cd web && npm run build && npm run lint`.
+- **Test results:** pytest **211 passed** with a local Hardhat node (199 passed + 12 chain skips without one); 7 new tests (stranded-nonce replacement, sections length check, and (attempt_id null → set, owner reload equals submit, other user / unknown / no token → 404/404/401, heading path, gate0 payload `section`). Hardhat **13 passing**; contract scripts `tsc --noEmit` clean. Web build OK, lint clean. Next 16.4.4 stops every other `npm run build` with its own security notice; running it again builds.
+- **Open issues:**
+  - web: `next` 16.4.4 has moderate advisories (`use cache`/`unstable_cache` leaks, image-optimizer SVG bypass). We use neither `next/image` nor `use cache`, so the demo is not exposed; fixing needs a Next version bump (pinned) — team decision.
+  - contracts: 37 audit warnings remain, all in Hardhat 2 / toolbox 6 dev tooling (never shipped, never runs on a server); the fix is Hardhat 3 / toolbox 7, which CLAUDE.md rules out.
+  - Still no login rate limiting; the verify rate limiter keeps one entry per client IP in memory (fine for a demo).
+  - `.env` has no CREDENTIALS_ADDRESS, EDUCATOR_PRIVATE_KEY or CUSTODY_SECRET yet: add the last two before R07/R08.
+  - No commits made: Deepesh commits and pushes.

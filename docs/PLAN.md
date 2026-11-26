@@ -29,7 +29,7 @@ over 4 days, one sequence, all run in one Claude Code session on Deepesh's Fedor
   "same as the answer" fails. Gate 2 failures join the one batched regeneration call (CLAUDE.md rule 5 extended).
   Results show the misconception for each wrong choice. Goal: average dependence ≥ 0.35 over 3 quizzes (now 0.19–0.36).
 - **Bloom's ladder (R02).** Levels `remember → understand → apply → analyze`. A retest goes one level up after a correct
-  answer, and stays or goes one down after a wrong one. Gate 1 also returns the checker's Bloom level (no new call);
+  answer and one level down after a wrong one (SPEC 9.3). Gate 1 also returns the checker's Bloom level (no new call);
   mismatches are logged and shown on metrics, not dropped.
 - **Mastery (R03).** BKT per user + concept (p_init 0.2, p_learn 0.15, p_slip 0.1, p_guess 0.25; mastered ≥ 0.95),
   updated from the target fact's concept on every graded answer. `GET /documents/{id}/mastery` → gap report: concepts by
@@ -45,8 +45,9 @@ over 4 days, one sequence, all run in one Claude Code session on Deepesh's Fedor
   `anchorResults(batchId, root, count)` (Merkle root of attempt hashes; only hashes, never names or emails),
   `mintBadge(to, docId, conceptHash, evidenceHash)`, `revokeBadge(tokenId, reasonHash)`,
   `addEducator(addr)`, `coSignDocument(docId, factRoot, signature)` (EIP-712, checked with ECDSA against the educator list),
-  `revokeDocument(docId, reasonHash)`. Issuer pays all gas.
-- **Credentials API (R08).** attempt_hash = keccak256 of canonical JSON {quiz_id, answers, score, total, salt}.
+  `revokeDocument(docId, reasonHash)`. Co-sign and both revocations carry an EIP-712 educator signature; the exact
+  interface is SPEC 9.8. Issuer pays all gas.
+- **Credentials API (R08).** attempt_hash per SPEC 9.9 (canonical JSON of quiz_id, answers, grades, score, total, salt).
   Educator "Anchor now" puts all unanchored attempts in one batch tx. A badge needs: concept mastered, its attempts
   anchored; evidenceHash = keccak256 of the sorted attempt hashes. New public endpoints `/verify/attempt/{id}`
   (proof + on-chain root + match) and `/verify/badge/{token_id}` (holder, concept, document, revoked, evidence);
@@ -57,7 +58,7 @@ over 4 days, one sequence, all run in one Claude Code session on Deepesh's Fedor
 - **Stretch: ZK proof of passing.** Only if R11 finishes before Monday morning; otherwise it goes in the report as future work.
 
 ## Before you start
-- **Issuer wallet top-up: at least 0.25 POL** (now ~0.015). Review 2 needs about 25–35 transactions across tests and
+- **Issuer wallet: at least 0.25 POL** (new issuer `0x6fa0…b665` holds 1.0 POL, checked in R00). Review 2 needs about 25–35 transactions across tests and
   rehearsals, plus deploying the credentials contract. If faucets fall short: `CHAIN_OPTIONAL=true` + local Hardhat node.
 - A second MetaMask account for the educator wallet (no POL needed; the issuer submits the signature).
 - A learner MetaMask account on Amoy, to show the badge in a real wallet.
