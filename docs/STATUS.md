@@ -262,3 +262,31 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - Still no login rate limiting; the verify rate limiter keeps one entry per client IP in memory (fine for a demo).
   - `.env` has no CREDENTIALS_ADDRESS, EDUCATOR_PRIVATE_KEY or CUSTODY_SECRET yet: add the last two before R07/R08.
   - No commits made: Deepesh commits and pushes.
+
+### R01 distractor gate (2026-11-26, Fedora)
+- **Done:**
+  - Migration `0003`: `questions.distractors jsonb` (default `[]`), `quizzes.hash_version int` (default 1). Existing rows stay v1 with no distractors.
+  - Generator: each MCQ now returns `distractors` (one per wrong option: `option`, `fact_idxs` ⊆ target + offered context, `misconception` ≤ 12 words). The prompt has a separate distractor section: built from real terms, list neighbours and numbers in the item's facts, plausible to someone who has not read the notes, and provably false by a cited fact. `validate()` rejects missing, duplicated, answer-pointing or out-of-item entries as `generator_error`; `option` is remapped after the server shuffle and stored sorted.
+  - Gate 2 (`gates.gate2_distractors`): one batched checker call, run in parallel with Gates 1 and 3; facts = cited + distractor facts. Passes only if every verdict is `FALSE`; missing or unknown verdicts count as `UNSUPPORTED`; missing ids get one retry with attempt = 1, then fail closed. Logged as `gate2` rows. Rejection order Gate 1 → 2 → 3, and all three share the one regeneration call (still ≤ 2 generator calls per quiz).
+  - Quiz hash v2 (`quizhash.quiz_hash(questions, salt, version)`, SPEC 9.2). New quizzes are `hash_version = 2`; `/verify/quiz` recomputes with the stored version. `tests/data/quiz_v1.json` is a frozen copy of the real Review 1 quiz `4e4d9a98…` (committed on Amoy), and it still hashes to its on-chain value.
+  - `AttemptResult.results[].misconceptions` (`option`, `misconception`, `sources` with section) after submit; `[]` for Review 1 questions. `QuizOut` is unchanged. Metrics: `rejected_by_gate.gate2` and gate2 reasons in `top_reasons`; the web metrics page labels it "Gate 2 · distractor falsity"; `web/lib/types.ts` has the new result field (showing it is R09).
+  - SPEC 9.2: Gate 2 facts, unknown verdicts and the rejection order spelled out.
+- **How to run:** `./scripts/dev.sh migrate` (dev DB is at 0003), then `./scripts/dev.sh test`; web `cd web && npm run build && npm run lint`.
+- **Test results:** pytest **239 passed** with a local Hardhat node (211 before + 28 new in `tests/test_distractors.py`: distractor validation (10 bad shapes), remap after the shuffle, Gate 2 payload/pass/each failing verdict/missing verdict/missing id retried then fail closed, stored order + gate2 rows in the job, Gate 1/2/3 failures sharing one regeneration (2 generator + 7 checker calls), Gate 2 missing everywhere → failed with 2 generator calls, v1 fixture unchanged, v2 canonical JSON exact + deterministic, v2 covers distractors and v1 does not, `/verify/quiz` uses the stored version (v2 quiz and the v1 fixture), nothing leaks before submit, misconceptions with sources after submit and on reload). Five Review 1 tests were updated to the new shape. Web `tsc`, lint and build clean.
+- **Real run** (Groq: generator `openai/gpt-oss-120b`, checker `qwen/qwen3.8-27b`; sample.pdf, 482 facts, one user `f268ace0…`, document `ce5c75ce…`; chain disabled for the run so no POL was spent; script in the session scratchpad, not in the repo):
+
+  | Quiz | Candidates | Accepted | Rejected | Gate 2 rejected | Avg dependence | Flagged general | Requests (gen + chk) | Seconds |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 6b55320a | 17 | 10 | gate2 4, generator_error 1 | 4 / 16 (25%) | 0.275 | 7 | 2 + 8 | 73 |
+  | 3b744620 | 13 | 10 | generator_error 1 | 0 / 12 | 0.322 | 5 | 1 + 6 | 76 |
+  | 86c723fd | — | 0 (failed) | Gate 4 call: `BadJSONError` | — | — | — | 2 + 17 | 232 |
+  | f78d68d0 | 13 | 10 | gate2 2 | 2 / 13 (15%) | 0.17 | 9 | 1 + 7 | 111 |
+
+  Gate 2 reasons: `option N TRUE` (2) and `option N UNSUPPORTED` (5). Gate 2 rejected 6 of 41 (15%), well under the 40% stop line.
+  **Goal not met:** average dependence over the 30 accepted questions is **0.256** (goal ≥ 0.35; Review 1 range was 0.19–0.36). The blind checker picked the right answer on 28 of 30. The questions with low dependence test general knowledge ("who decrypts with the recipient's private key", "Target breach via the HVAC vendor"), so no distractor can make them depend on the notes. The ones with high dependence (1.0) test the notes' own case details (names of team members, incident timestamps). Some distractors are still weak: one question mixed in options of a different kind (system components offered as "access-control practices"), and some labels are generic ("confuses encryption with hashing").
+- **Open issues:**
+  - Dependence: the biggest lever is now the choice of target fact, not the distractors. Possible next step (team decision, not done): prefer facts with case-specific detail at selection, or regenerate when the blind checker is ≥ 90% confident. Both cost requests and change SPEC 4.
+  - Quiz `86c723fd` failed (Review 1 code path): Qwen broke JSON mode twice on the Gate 4 batch, `BadJSONError` stopped the job, and the rollback also removed its gate log. Likely cause: Qwen's hidden reasoning fills `CHECKER_MAX_TOKENS=1000` before the JSON ends (the same failure gpt-oss had at ingest). Before R11, either treat a `BadJSONError` in `gates._batch` as "no results" (retry with attempt = 1, then fail closed) or test `CHECKER_REASONING_EFFORT` for Qwen. With `CHAIN_OPTIONAL=false` in the demo this would show as a failed quiz on stage.
+  - Gate 2 adds a third parallel checker call; a quiz now takes 75–110 s (Review 1: about 60 s) because of the checker's 8000 TPM.
+  - Requests per quiz: 1–2 generator + 6–8 checker when the JSON is fine.
+  - No commits made: Deepesh commits and pushes.

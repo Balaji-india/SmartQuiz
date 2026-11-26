@@ -1,7 +1,7 @@
 """The quiz background job (SPEC section 4): select → generate → gates → duplicates → save → commit → ready.
 
 Request budget per quiz: ONE generator call (attempt 0) for all targets plus spares, then at most ONE
-batched regeneration (attempt 1) shared by every target that failed validation, Gate 1 or Gate 3.
+batched regeneration (attempt 1) shared by every target that failed validation, Gate 1, 2 or 3.
 Checker calls: one batch per gate per round, plus one gate-4 batch.
 """
 import logging
@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.chain.quizhash import new_salt, quiz_hash
+from app.chain.quizhash import HASH_VERSION, new_salt, quiz_hash
 from app.chain.service import ChainError, get_chain
 from app.config import get_settings
 from app.db import SessionLocal
@@ -94,7 +94,7 @@ class _Run:
         _bump(self.quiz.id, "rejected")
 
     def verify(self, candidates: list[Candidate]) -> list[Candidate]:
-        """Validation, then Gates 1 and 3 in parallel. Returns the candidates that passed both."""
+        """Validation, then Gates 1, 2 and 3 in parallel. Returns the candidates that passed all three."""
         valid = []
         for c in candidates:
             if c.error:
@@ -104,20 +104,24 @@ class _Run:
                 valid.append(c)
         if not valid:
             return []
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        with ThreadPoolExecutor(max_workers=3) as pool:
             jobs = [
                 pool.submit(gates.gate1_grounding, valid, self.fact_text),
+                pool.submit(gates.gate2_distractors, valid, self.fact_text),
                 pool.submit(gates.gate3_solvability, valid, self.fact_text),
             ]
             for job in jobs:
                 job.result()
         passed = []
         for c in valid:
-            g1, g3 = c.gate_results["gate1"], c.gate_results["gate3"]
+            g1, g2, g3 = c.gate_results["gate1"], c.gate_results["gate2"], c.gate_results["gate3"]
             self.log(c, "gate1", gates.passed_gate1(c), f"{g1['verdict']}: {g1['reason']}", checker=True)
+            self.log(c, "gate2", gates.passed_gate2(c), g2["reason"], checker=True)
             self.log(c, "gate3", gates.passed_gate3(c), g3["reason"], checker=True)
             if not gates.passed_gate1(c):
                 self.reject(c, "gate1", g1["reason"])
+            elif not gates.passed_gate2(c):
+                self.reject(c, "gate2", g2["reason"])
             elif not gates.passed_gate3(c):
                 self.reject(c, "gate3", f"checker chose option {g3['choice']}: {g3['reason']}")
             else:
@@ -179,6 +183,7 @@ class _Run:
                     bloom_level=c.bloom_level,
                     fingerprint=fp,
                     gate_results=c.gate_results,
+                    distractors=c.distractors,
                     dependence_score=score,
                     flagged_general=score < gates.FLAG_GENERAL_BELOW,
                     stem_embedding=vector.tolist(),
@@ -192,7 +197,8 @@ def commit_quiz_onchain(db: Session, quiz: Quiz, questions: list[Question]) -> N
     """P06: salt + quiz_hash (SPEC section 8), then commitQuiz on chain. Raises ChainError only when the
     chain is required (CHAIN_OPTIONAL=false); otherwise commit_tx stays null and chain_status is offline."""
     quiz.salt = new_salt()
-    quiz.quiz_hash = quiz_hash(questions, quiz.salt)
+    quiz.hash_version = HASH_VERSION
+    quiz.quiz_hash = quiz_hash(questions, quiz.salt, quiz.hash_version)
     try:
         quiz.commit_tx = get_chain().commit_quiz(quiz.id, quiz.document_id, quiz.quiz_hash)
     except ChainError as exc:

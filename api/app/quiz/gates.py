@@ -1,18 +1,24 @@
-"""Gates 1, 3 and 4 (SPEC section 4). Checker model only; one batched call per gate, items keyed by id.
+"""Gates 1, 2, 3 and 4 (SPEC sections 4 and 9.2). Checker model only; one batched call per gate, items keyed by id.
 
 Results go into gate_results with integers only, so the quiz hash is stable. Missing verdicts are
-retried once (attempt=1), then fail closed (gates 1 and 3) or count as a blind miss (gate 4).
+retried once (attempt=1), then fail closed (gates 1, 2 and 3) or count as a blind miss (gate 4).
 """
 import json
 import random
 
 from app.llm import provider
 from app.quiz.generate import Candidate
-from app.quiz.prompts import GATE_DEPENDENCE_SYSTEM, GATE_GROUNDING_SYSTEM, GATE_SOLVABILITY_SYSTEM
+from app.quiz.prompts import (
+    GATE_DEPENDENCE_SYSTEM,
+    GATE_DISTRACTORS_SYSTEM,
+    GATE_GROUNDING_SYSTEM,
+    GATE_SOLVABILITY_SYSTEM,
+)
 
 NO_VERDICT = "checker returned no verdict"
 FLAG_GENERAL_BELOW = 0.3
 MAX_REASON_CHARS = 300
+GATE2_VERDICTS = ("FALSE", "TRUE", "UNSUPPORTED", "SAME_AS_ANSWER")
 
 
 def _is_int(value) -> bool:
@@ -78,6 +84,44 @@ def gate1_grounding(candidates: list[Candidate], fact_text: dict[int, str]) -> N
         c.gate_results["gate1"] = {"verdict": verdict, "reason": reason}
 
 
+def gate2_distractors(candidates: list[Candidate], fact_text: dict[int, str]) -> None:
+    """Every distractor must be FALSE according to the facts (cited facts + the distractors' own facts)."""
+    items = []
+    for i, c in enumerate(candidates):
+        idxs = sorted(set(c.fact_idxs).union(*(d["fact_idxs"] for d in c.distractors)))
+        items.append(
+            {
+                "id": i,
+                "facts": [{"idx": idx, "text": fact_text[idx]} for idx in idxs],
+                "stem": c.stem,
+                "answer": c.options[c.answer_index],
+                "distractors": [
+                    {"d": k, "text": c.options[d["option"]], "fact_idxs": d["fact_idxs"]} for k, d in enumerate(c.distractors)
+                ],
+            }
+        )
+    found = _batch(GATE_DISTRACTORS_SYSTEM, items)
+    for i, c in enumerate(candidates):
+        r = found.get(i)
+        by_d = {}
+        for v in (r.get("verdicts") if r and isinstance(r.get("verdicts"), list) else []):
+            if isinstance(v, dict) and _is_int(v.get("d")) and v["d"] not in by_d:
+                by_d[v["d"]] = str(v.get("verdict", "")).strip().upper()
+        verdicts = []
+        for k, d in enumerate(c.distractors):
+            verdict = by_d.get(k, "")
+            # A missing or unknown verdict fails closed.
+            verdicts.append({"option": d["option"], "verdict": verdict if verdict in GATE2_VERDICTS else "UNSUPPORTED"})
+        passed = bool(r) and bool(verdicts) and all(v["verdict"] == "FALSE" for v in verdicts)
+        if not r:
+            reason = NO_VERDICT
+        elif not passed and not _reason(r):
+            reason = ", ".join(f"option {v['option']} {v['verdict']}" for v in verdicts if v["verdict"] != "FALSE")
+        else:
+            reason = _reason(r)
+        c.gate_results["gate2"] = {"passed": passed, "verdicts": verdicts, "reason": reason}
+
+
 def gate3_solvability(candidates: list[Candidate], fact_text: dict[int, str]) -> None:
     orders = [_shuffle(c, "gate3") for c in candidates]
     items = [
@@ -123,6 +167,10 @@ def gate4_dependence(candidates: list[Candidate]) -> None:
 
 def passed_gate1(c: Candidate) -> bool:
     return c.gate_results.get("gate1", {}).get("verdict") == "SUPPORTED"
+
+
+def passed_gate2(c: Candidate) -> bool:
+    return bool(c.gate_results.get("gate2", {}).get("passed"))
 
 
 def passed_gate3(c: Candidate) -> bool:

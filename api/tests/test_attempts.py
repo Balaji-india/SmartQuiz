@@ -64,11 +64,11 @@ def test_stored_quiz_hash_recomputes_and_changes_after_tampering(client, test_en
     with Session(test_engine) as db:
         quiz = db.get(Quiz, uuid.UUID(quiz_id))
     questions = _questions(test_engine, quiz_id)
-    assert len(quiz.salt) == 32
-    assert quizhash.quiz_hash(questions, quiz.salt) == quiz.quiz_hash
+    assert len(quiz.salt) == 32 and quiz.hash_version == 2
+    assert quizhash.quiz_hash(questions, quiz.salt, 2) == quiz.quiz_hash
     with test_engine.begin() as conn:
         conn.execute(text("UPDATE questions SET stem = stem || ' ' WHERE quiz_id = :q AND position = 2"), {"q": quiz_id})
-    assert quizhash.quiz_hash(_questions(test_engine, quiz_id), quiz.salt) != quiz.quiz_hash
+    assert quizhash.quiz_hash(_questions(test_engine, quiz_id), quiz.salt, 2) != quiz.quiz_hash
 
 
 # --- chain commit --------------------------------------------------------------------------

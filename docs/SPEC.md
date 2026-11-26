@@ -239,7 +239,8 @@ Gate 2 (checker, one batched call, run in parallel with Gates 1 and 3):
 input `{"items":[{"id":0,"facts":[{"idx":213,"text":"…"}],"stem":"…","answer":"…","distractors":[{"d":0,"text":"…","fact_idxs":[213]}]}]}`
 output `{"results":[{"id":0,"verdicts":[{"d":0,"verdict":"FALSE"}],"reason":"≤ 12 words, only when one is not FALSE"}]}`.
 Verdicts: `FALSE` (the facts show it is wrong), `TRUE` (the facts make it correct too), `UNSUPPORTED` (the facts do not
-settle it), `SAME_AS_ANSWER`. Passes only if every distractor is `FALSE`. Missing ids: one more call with attempt = 1, then fail closed.
+settle it), `SAME_AS_ANSWER`. Passes only if every distractor is `FALSE`; a missing or unknown verdict counts as `UNSUPPORTED`.
+`facts` = the question's `fact_idxs` plus every distractor's `fact_idxs`. Rejection order when several gates fail: Gate 1, then 2, then 3. Missing ids: one more call with attempt = 1, then fail closed.
 Gate 1, 2 and 3 failures share the ONE batched regeneration call (CLAUDE.md rule 5).
 
 `gate_results` adds `"gate2":{"passed":true,"verdicts":[{"option":1,"verdict":"FALSE"},…],"reason":"…"}` (`option` in stored order).

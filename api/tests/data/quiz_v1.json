@@ -1,0 +1,311 @@
+{
+ "note": "Review 1 quiz 4e4d9a98 (committed on Amoy, tx 0x934cc7a6...c780). Hash v1 must stay equal to quiz_hash.",
+ "salt": "eeaa1dd726bbbed2d807c18671df39b5",
+ "quiz_hash": "0xc9b3b7cf36ffbfc98951a34a6a6d4faffe67ec13d7900f95d4e53184e2e7e8c8",
+ "questions": [
+  {
+   "position": 1,
+   "stem": "What term describes a safe application that is mistakenly identified as malware?",
+   "options": [
+    "False positive",
+    "False negative",
+    "Exploit",
+    "Vulnerability"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    92
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts directly define false positive as safe app quarantined.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact defines safe app quarantined as false positive"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "Safe app flagged as malware is a false positive.",
+     "confidence": 100
+    }
+   }
+  },
+  {
+   "position": 2,
+   "stem": "Why did the professor say the attack stopped \"at the attacker’s mercy\" without diagnosis?",
+   "options": [
+    "Because there was no incident response plan",
+    "Because the attack was halted without a clear cause, forcing investigation",
+    "Because a standby site was missing",
+    "Because the motive was hacktivism"
+   ],
+   "answer_index": 1,
+   "fact_idxs": [
+    143,
+    144
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts state attack stopped at attacker's mercy forcing investigation.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 1,
+     "passed": true,
+     "reason": "Fact states attack halted without diagnosis, forcing investigation"
+    },
+    "gate4": {
+     "choice": 1,
+     "reason": "Lack of diagnosis implies investigation is needed.",
+     "confidence": 30
+    }
+   }
+  },
+  {
+   "position": 3,
+   "stem": "According to the report, what was the purpose of the DDoS attack?",
+   "options": [
+    "A diversion while the firewall was breached",
+    "A direct attempt to steal data",
+    "A test of new firewall rules",
+    "An accidental misconfiguration"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    178,
+    180
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts explicitly state DDoS was a diversion.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact states DDoS was a diversion"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "DDoS often accompanies breach activity as a diversion.",
+     "confidence": 20
+    }
+   }
+  },
+  {
+   "position": 4,
+   "stem": "What did Arthur Andersen’s document‑retention policy require before destroying audit evidence?",
+   "options": [
+    "Keeping documents only while relevant",
+    "Keeping documents for a fixed ten‑year period",
+    "Never destroying any documents",
+    "Storing all documents in the cloud"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    213,
+    214
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts state policy was to keep documents while relevant.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact states policy kept documents while relevant"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "Standard policy retains evidence while relevant to litigation.",
+     "confidence": 80
+    }
+   }
+  },
+  {
+   "position": 5,
+   "stem": "Which of the following is NOT a built‑in role in Windows XP?",
+   "options": [
+    "Power user",
+    "Backup operator",
+    "Domain controller",
+    "Guest"
+   ],
+   "answer_index": 2,
+   "fact_idxs": [
+    233
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Listed roles are valid; domain controller is absent from facts.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 2,
+     "passed": true,
+     "reason": "Domain controller is not a built-in XP role"
+    },
+    "gate4": {
+     "choice": 2,
+     "reason": "Domain controller is a server role, not a local user role.",
+     "confidence": 95
+    }
+   }
+  },
+  {
+   "position": 6,
+   "stem": "The CCE process is primarily aimed at which threat level?",
+   "options": [
+    "Nation‑state‑level threats",
+    "Individual hacker threats",
+    "Script‑kid attacks",
+    "Insider threats"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    252
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts explicitly state CCE targets nation-state-level threats.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact states CCE focuses on nation-state threats"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "CCE focuses on advanced persistent/advanced threats.",
+     "confidence": 60
+    }
+   }
+  },
+  {
+   "position": 7,
+   "stem": "Running critical systems on which outdated operating system exemplifies technological obsolescence?",
+   "options": [
+    "Windows 8",
+    "Windows 10",
+    "Windows 7",
+    "Windows XP"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    295
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts cite Windows 8 as an example of obsolescence.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact cites Windows 8 as obsolescence example"
+    },
+    "gate4": {
+     "choice": 3,
+     "reason": "Windows XP is the most iconic example of obsolescence.",
+     "confidence": 90
+    }
+   }
+  },
+  {
+   "position": 8,
+   "stem": "What is true about NotPetya’s ransom demand?",
+   "options": [
+    "It was never unlocked even after payment",
+    "It was paid in Bitcoin and the files were restored",
+    "It targeted only Linux systems",
+    "It was attributed to North Korea"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    320,
+    322
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts state it did not unlock even after payment.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact states NotPetya did not unlock after payment"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "NotPetya developers confirmed decryption was impossible.",
+     "confidence": 95
+    }
+   }
+  },
+  {
+   "position": 9,
+   "stem": "What function does a DMZ serve in network architecture?",
+   "options": [
+    "Acts as a buffer zone between the internet and internal network",
+    "Encrypts all internal traffic end‑to‑end",
+    "Provides direct internet access to internal servers",
+    "Monitors user passwords for strength"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    366
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Facts define DMZ as a buffer zone between networks.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Fact defines DMZ as buffer zone"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "DMZ is a buffer zone between external and internal networks.",
+     "confidence": 100
+    }
+   }
+  },
+  {
+   "position": 10,
+   "stem": "Which sequence correctly lists the stages of the cyber kill chain?",
+   "options": [
+    "Reconnaissance, Weaponization, Delivery, Exploitation, Installation, Command & Control, Actions on objectives",
+    "Delivery, Reconnaissance, Weaponization, Exploitation, Installation, Actions on objectives, Command & Control",
+    "Weaponization, Reconnaissance, Delivery, Installation, Exploitation, Command & Control, Actions on objectives",
+    "Exploration, Weaponization, Delivery, Exploitation, Installation, Command & Control, Actions on objectives"
+   ],
+   "answer_index": 0,
+   "fact_idxs": [
+    371
+   ],
+   "gate_results": {
+    "gate1": {
+     "reason": "Answer matches the sequence listed in the facts exactly.",
+     "verdict": "SUPPORTED"
+    },
+    "gate3": {
+     "choice": 0,
+     "passed": true,
+     "reason": "Matches fact list of kill chain stages"
+    },
+    "gate4": {
+     "choice": 0,
+     "reason": "Standard Cyber Kill Chain starts with Reconnaissance.",
+     "confidence": 100
+    }
+   }
+  }
+ ]
+}

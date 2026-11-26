@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models import GenerationLog, Question, Quiz
 
-QUESTION_GATES = ("gate1", "gate3", "generator_error")
+QUESTION_GATES = ("gate1", "gate2", "gate3", "generator_error")
 DUPLICATE_GATES = {"dup_fingerprint": "fingerprint", "dup_cosine": "cosine"}
 TOP_REASONS = 5
 
@@ -51,7 +51,7 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
         "document_id": document_id,
         "candidates": candidates,
         "accepted": len(questions),
-        "rejected_by_gate": {g: rejected_by_gate.get(g, 0) for g in ("gate1", "gate3")}
+        "rejected_by_gate": {g: rejected_by_gate.get(g, 0) for g in ("gate1", "gate2", "gate3")}
         | ({"generator_error": rejected_by_gate["generator_error"]} if rejected_by_gate.get("generator_error") else {}),
         "top_reasons": [
             {"gate": gate, "reason": reason, "count": count} for (gate, reason), count in reasons.most_common(TOP_REASONS)

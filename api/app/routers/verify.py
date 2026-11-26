@@ -213,7 +213,7 @@ def verify_quiz(quiz_id: uuid.UUID, db: Session = Depends(get_db)) -> VerifyQuiz
     if quiz.status != "ready" or not quiz.salt:
         raise HTTPException(status.HTTP_409_CONFLICT, "Quiz is not ready")
     questions = db.scalars(select(Question).where(Question.quiz_id == quiz.id).order_by(Question.position)).all()
-    recomputed = quiz_hash(questions, quiz.salt)
+    recomputed = quiz_hash(questions, quiz.salt, quiz.hash_version)
 
     onchain_hash: str | None = None
     match: bool | None = None

@@ -10,6 +10,7 @@ import type { MetricsOut } from "@/lib/types";
 
 const GATE_LABEL: Record<string, string> = {
   gate1: "Gate 1 · grounding",
+  gate2: "Gate 2 · distractor falsity",
   gate3: "Gate 3 · solvability",
   generator_error: "Malformed output",
 };

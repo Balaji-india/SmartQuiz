@@ -78,12 +78,19 @@ class SourceOut(BaseModel):
     section: str
 
 
+class MisconceptionOut(BaseModel):
+    option: int
+    misconception: str
+    sources: list[SourceOut]
+
+
 class ResultOut(BaseModel):
     question_id: uuid.UUID
     chosen: int | None
     correct_index: int
     correct: bool
     sources: list[SourceOut]
+    misconceptions: list[MisconceptionOut]  # SPEC 9.2: after submit only; [] for Review 1 questions
 
 
 class WeakConceptOut(BaseModel):
@@ -168,8 +175,12 @@ def quiz_out(db: Session, quiz: Quiz) -> QuizOut:
 
 
 def _quiz_facts(db: Session, quiz: Quiz, questions: list[Question]) -> dict[int, Fact]:
-    """Every cited and target fact of the quiz, by idx."""
-    cited = sorted({i for q in questions for i in q.fact_idxs} | {q.target_fact_idx for q in questions})
+    """Every cited, target and distractor fact of the quiz, by idx."""
+    cited = sorted(
+        {i for q in questions for i in q.fact_idxs}
+        | {q.target_fact_idx for q in questions}
+        | {i for q in questions for d in q.distractors for i in d["fact_idxs"]}
+    )
     return {
         f.idx: f
         for f in db.scalars(select(Fact).where(Fact.document_id == quiz.document_id, Fact.idx.in_(cited)))
@@ -184,6 +195,12 @@ def _build_result(
         s.id: s.heading
         for s in db.scalars(select(Section).where(Section.id.in_({f.section_id for f in facts.values()})))
     }
+    def sources(idxs) -> list[SourceOut]:
+        return [
+            SourceOut(idx=i, text=facts[i].text, page=facts[i].page, section=headings[facts[i].section_id])
+            for i in sorted(idxs)
+        ]
+
     results, score = [], 0
     weak: dict[str, list[int]] = {}
     for q, chosen in zip(questions, answers):
@@ -195,9 +212,10 @@ def _build_result(
                 chosen=chosen,
                 correct_index=q.answer_index,
                 correct=correct,
-                sources=[
-                    SourceOut(idx=i, text=facts[i].text, page=facts[i].page, section=headings[facts[i].section_id])
-                    for i in sorted(q.fact_idxs)
+                sources=sources(q.fact_idxs),
+                misconceptions=[
+                    MisconceptionOut(option=d["option"], misconception=d["misconception"], sources=sources(d["fact_idxs"]))
+                    for d in q.distractors
                 ],
             )
         )

@@ -33,6 +33,7 @@ TASK_CHECK_FAITHFULNESS = "[task:check_faithfulness]"
 TASK_GENERATE_QUESTIONS = "[task:generate_questions]"
 TASK_GATE_GROUNDING = "[task:gate_grounding]"
 TASK_GATE_SOLVABILITY = "[task:gate_solvability]"
+TASK_GATE_DISTRACTORS = "[task:gate_distractors]"
 TASK_GATE_DEPENDENCE = "[task:gate_dependence]"
 TASK_CHAT_ANSWER = "[task:chat_answer]"
 
@@ -339,6 +340,11 @@ def _fake_generate_questions(user: str, attempt: int) -> dict:
                 "answer_index": answer,
                 "fact_idxs": [idx],
                 "bloom_level": item.get("bloom_level", "remember"),
+                "distractors": [
+                    {"option": k, "fact_idxs": [idx], "misconception": f"confuses {target['concept']} with option {k}"}
+                    for k in range(4)
+                    if k != answer
+                ],
             }
         )
     return {"questions": questions}
@@ -349,6 +355,9 @@ def _fake_gate(system: str, user: str) -> dict:
     for item in json.loads(user)["items"]:
         if TASK_GATE_GROUNDING in system:
             results.append({"id": item["id"], "verdict": "SUPPORTED", "reason": "fake"})
+            continue
+        if TASK_GATE_DISTRACTORS in system:
+            results.append({"id": item["id"], "verdicts": [{"d": d["d"], "verdict": "FALSE"} for d in item["distractors"]]})
             continue
         facts = item.get("facts", [])
         choice = next((i for i, o in enumerate(item["options"]) if o in facts), 0)
@@ -373,7 +382,7 @@ def _fake(role: str, system: str, user: str, attempt: int) -> dict:
         return _fake_check_faithfulness(user)
     if TASK_GENERATE_QUESTIONS in system:
         return _fake_generate_questions(user, attempt)
-    if any(task in system for task in (TASK_GATE_GROUNDING, TASK_GATE_SOLVABILITY, TASK_GATE_DEPENDENCE)):
+    if any(task in system for task in (TASK_GATE_GROUNDING, TASK_GATE_DISTRACTORS, TASK_GATE_SOLVABILITY, TASK_GATE_DEPENDENCE)):
         return _fake_gate(system, user)
     if TASK_CHAT_ANSWER in system:
         return _fake_chat_answer(user)

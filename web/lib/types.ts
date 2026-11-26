@@ -68,12 +68,20 @@ export type QuizProgressOut = {
 };
 
 export type SourceOut = { idx: number; text: string; page: number; section: string };
+export type MisconceptionOut = { option: number; misconception: string; sources: SourceOut[] };
 
 export type AttemptResult = {
   attempt_id: string;
   score: number;
   total: number;
-  results: { question_id: string; chosen: number | null; correct_index: number; correct: boolean; sources: SourceOut[] }[];
+  results: {
+    question_id: string;
+    chosen: number | null;
+    correct_index: number;
+    correct: boolean;
+    sources: SourceOut[];
+    misconceptions: MisconceptionOut[]; // after submit only; [] for Review 1 questions
+  }[];
   weak_concepts: { concept: string; wrong: number; facts: number[] }[];
 };
 

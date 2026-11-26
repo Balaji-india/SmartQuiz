@@ -141,7 +141,9 @@ def test_one_generator_call_when_everything_passes(client, calls):
     generator = [c for c in calls.log if c[0] == "generator"]
     assert generator == [("generator", provider.TASK_GENERATE_QUESTIONS, 0)]
     checker_tasks = sorted(c[1] for c in calls.log if c[0] == "checker")
-    assert checker_tasks == sorted([provider.TASK_GATE_GROUNDING, provider.TASK_GATE_SOLVABILITY, provider.TASK_GATE_DEPENDENCE])
+    assert checker_tasks == sorted(
+        [provider.TASK_GATE_GROUNDING, provider.TASK_GATE_DISTRACTORS, provider.TASK_GATE_SOLVABILITY, provider.TASK_GATE_DEPENDENCE]
+    )
 
 
 def _fail_gate1_for(calls, targets: set, attempts: set):
@@ -225,7 +227,7 @@ def test_gate_results_shape_and_dependence(client, calls, test_engine):
     with Session(test_engine) as db:
         questions = db.scalars(select(Question)).all()
     for q in questions:
-        assert set(q.gate_results) == {"gate1", "gate3", "gate4"}
+        assert set(q.gate_results) == {"gate1", "gate2", "gate3", "gate4"}
         assert q.gate_results["gate1"]["verdict"] == "SUPPORTED"
         assert q.gate_results["gate4"] == {"choice": q.answer_index, "confidence": 90, "reason": "fake"}
         assert q.dependence_score == pytest.approx(0.1) and q.flagged_general
@@ -250,7 +252,7 @@ def test_same_family_checker_is_logged_and_shown(client, test_engine, monkeypatc
 def test_metrics_exclude_ingestion_checks(client):
     headers, doc_id = ready_document(client)
     metrics = client.get(f"/metrics/{doc_id}", headers=headers).json()
-    assert metrics["candidates"] == 0 and metrics["rejected_by_gate"] == {"gate1": 0, "gate3": 0}
+    assert metrics["candidates"] == 0 and metrics["rejected_by_gate"] == {"gate1": 0, "gate2": 0, "gate3": 0}
     assert metrics["same_family_checker_used"] is False
 
 
@@ -345,8 +347,13 @@ def test_validation_rejects_bad_shapes(raw, error):
     assert error in validate(raw, _target(), {5, 6, 7, 8}).error
 
 
+def _distractors_for(answer: int, idx: int = 5) -> list[dict]:
+    return [{"option": k, "fact_idxs": [idx], "misconception": f"mixes up {k}"} for k in range(4) if k != answer]
+
+
 def test_validation_adds_the_target_and_sorts():
-    c = validate({"stem": "s", "options": ["a", "b", "c", "d"], "answer_index": 2, "fact_idxs": [7]}, _target(), {5, 7})
+    raw = {"stem": "s", "options": ["a", "b", "c", "d"], "answer_index": 2, "fact_idxs": [7], "distractors": _distractors_for(2)}
+    c = validate(raw, _target(), {5, 7})
     assert c.error is None and c.fact_idxs == [5, 7] and c.bloom_level == "remember"
 
 
@@ -389,7 +396,7 @@ def test_cosine_duplicate_is_logged_and_blocked(client, calls, test_engine, monk
 
 
 def test_server_shuffles_option_positions_and_keeps_the_answer():
-    raw = {"stem": "s", "options": ["right", "w1", "w2", "w3"], "answer_index": 0, "fact_idxs": [5]}
+    raw = {"stem": "s", "options": ["right", "w1", "w2", "w3"], "answer_index": 0, "fact_idxs": [5], "distractors": _distractors_for(0)}
     positions = set()
     for _ in range(40):
         c = validate(raw, _target(), {5})

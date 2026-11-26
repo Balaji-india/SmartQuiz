@@ -10,6 +10,7 @@ from app.quiz.prompts import GENERATE_QUESTIONS_SYSTEM, REGENERATE_NOTE
 from app.quiz.select import BLOOM_LEVELS, Target
 
 MAX_CONTEXT_FACTS = 2
+MAX_MISCONCEPTION_WORDS = 12
 
 
 @dataclass
@@ -23,6 +24,7 @@ class Candidate:
     answer_index: int = -1
     fact_idxs: list[int] = field(default_factory=list)
     bloom_level: str = ""
+    distractors: list[dict] = field(default_factory=list)  # [{option, fact_idxs, misconception}], stored order
     error: str | None = None  # set when the reply item is missing or malformed
     gate_results: dict = field(default_factory=dict)
     failed_gate: str | None = None
@@ -51,8 +53,38 @@ def _is_int(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _distractors(raw, answer: int, allowed_idxs: set[int]) -> tuple[list[dict], str | None]:
+    """SPEC 9.2: one entry per wrong option (generator order), fact_idxs ⊆ this item, misconception ≤ 12 words."""
+    if not isinstance(raw, list):
+        return [], "distractors must be a list"
+    entries: dict[int, dict] = {}
+    for d in raw:
+        if not isinstance(d, dict):
+            return [], "distractor entry is not an object"
+        option, idxs, misconception = d.get("option"), d.get("fact_idxs"), d.get("misconception")
+        if not _is_int(option) or not 0 <= option <= 3:
+            return [], "distractor option must be 0-3"
+        if option == answer:
+            return [], "distractor points at the answer"
+        if option in entries:
+            return [], "distractor option is duplicated"
+        if not isinstance(idxs, list) or not idxs or not all(_is_int(i) for i in idxs):
+            return [], "distractor fact_idxs must be a non-empty list of integers"
+        if not set(idxs) <= allowed_idxs:
+            return [], "distractor fact_idxs cites a fact outside this item"
+        if not isinstance(misconception, str) or not misconception.strip():
+            return [], "distractor misconception is empty"
+        if len(misconception.split()) > MAX_MISCONCEPTION_WORDS:
+            return [], f"distractor misconception is over {MAX_MISCONCEPTION_WORDS} words"
+        entries[option] = {"option": option, "fact_idxs": sorted(set(idxs)), "misconception": " ".join(misconception.split())}
+    if len(entries) != 3:
+        return [], "distractors must cover every wrong option"
+    return [entries[k] for k in sorted(entries)], None
+
+
 def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
-    """Shape rules: 4 distinct non-empty options, answer_index 0-3, fact_idxs from this item and including the target."""
+    """Shape rules: 4 distinct non-empty options, answer_index 0-3, fact_idxs from this item and including the target,
+    and one valid distractor entry per wrong option (SPEC 9.2)."""
     c = Candidate(target)
     if not isinstance(raw, dict):
         c.error = "no question returned for this target"
@@ -76,6 +108,8 @@ def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
             c.error = f"fact_idxs cites more than {MAX_CONTEXT_FACTS} context facts"
         else:
             c.fact_idxs = cited
+    if not c.error:
+        distractors, c.error = _distractors(raw.get("distractors"), answer, allowed_idxs)
     if c.error:
         return c
     c.stem = stem.strip()
@@ -85,6 +119,8 @@ def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
     random.Random(str(c.candidate_id)).shuffle(order)
     c.options = [options[k].strip() for k in order]
     c.answer_index = order.index(answer)
+    # option was in the generator's order; store it in the shown order, sorted by option.
+    c.distractors = sorted(({**d, "option": order.index(d["option"])} for d in distractors), key=lambda d: d["option"])
     level = raw.get("bloom_level")
     c.bloom_level = level if level in BLOOM_LEVELS else target.bloom_level
     return c
