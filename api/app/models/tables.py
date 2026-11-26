@@ -170,3 +170,18 @@ class GenerationLog(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime] = _created_at()
+
+
+class Mastery(Base):
+    """BKT mastery per user + document + concept (SPEC 9.4). concept = the spelling on the concept's lowest-idx fact."""
+
+    __tablename__ = "mastery"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    concept: Mapped[str] = mapped_column(Text, primary_key=True)
+    p_mastery: Mapped[float] = mapped_column(Float, nullable=False)
+    answered: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

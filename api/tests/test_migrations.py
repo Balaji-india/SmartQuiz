@@ -15,6 +15,7 @@ TABLES = {
     "attempts",
     "fact_coverage",
     "generation_log",
+    "mastery",
 }
 
 

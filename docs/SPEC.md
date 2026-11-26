@@ -280,6 +280,12 @@ MasteryOut = {"document_id":"uuid","summary":{"mastered":3,"learning":5,"weak":4
                "status":"weak","fact_idxs":[211,212],"badge_id":"uuid|null"}]}
   // order: weak (lowest first), learning, untested, mastered.
 ```
+Concepts match case-insensitively (trimmed, lower case): `mastery.concept` and `concepts[].concept` use the spelling of the
+concept's lowest-idx fact; `section_id` / `section` (heading) come from that fact; `fact_idxs` = every fact of the concept.
+Untested concepts show `p_mastery` = p_init 0.2. Within a status: lowest `p_mastery` first (untested: document order).
+Every final grade goes through one hook (`app/learn/grading.py on_final_grade`): coverage + mastery in the same
+transaction (FSRS R05 and short answers R06 plug in there). `api/scripts/backfill_mastery.py` rebuilds the table by
+replaying all attempts in `created_at` order (idempotent).
 
 ### 9.5 R04 — Revision notes
 DB `revision_notes`: id, user_id, document_id, concept, sentences jsonb `[{"text","fact_idxs"}]`, dropped int, created_at.

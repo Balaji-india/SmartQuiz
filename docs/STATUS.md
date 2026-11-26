@@ -341,3 +341,52 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - A retest may now repeat the earlier stem almost word for word at a new level label. It is not blocked; a stricter ceiling (e.g. cosine ≥ 0.97 still blocks) would be a new SPEC number (team decision, not done).
   - The one `dup_fingerprint` in quiz 7 is the expected case: a level the fact had already been asked at, with the same facts.
   - No commits made: Deepesh commits and pushes.
+
+### R03 — Mastery (BKT) and gap report (2026-11-26, Fedora)
+- **Done:**
+  - Migration `0004_mastery`: the `mastery` table per SPEC 9.4, and the `Mastery` model.
+  - `app/learn/mastery.py`:
+    - BKT constants from SPEC (p_init 0.2, t 0.15, s 0.10, g 0.25 MCQ / 0.05 short) and a pure `bkt_update` (partial counts as wrong);
+    - `mastery_status` (weak < 0.40 ≤ learning < 0.95 ≤ mastered; answered 0 → untested);
+    - `update_mastery` (one row upsert).
+  - Concepts match case-insensitively and are stored under the spelling on the concept's lowest-idx fact. This is now noted in SPEC 9.4.
+  - `app/learn/grading.py on_final_grade`: the one hook per final grade. It does the coverage upsert (moved from `submit_attempt`, unchanged) and the mastery update for the target fact's concept, in the submit transaction. R05 (FSRS) and R06 (short answers) plug in here.
+  - `GET /documents/{id}/mastery -> MasteryOut` (`app/routers/learn.py`), owner only (404 otherwise):
+    - every concept is listed, untested ones at p 0.2;
+    - each concept has its section (the first fact's heading) and all its fact idxs;
+    - `badge_id` is null until R08;
+    - order: weak, then learning (lowest p first), then untested (document order), then mastered.
+  - `web/lib/types.ts` adds `MasteryOut` for R09.
+  - `api/scripts/backfill_mastery.py` replays every attempt in `created_at` order. It deletes and rebuilds the rows per (user, document) in one transaction, so it is idempotent, and it does not touch coverage.
+- **How to run:**
+  - `cd api && PYTHONUTF8=1 .venv/bin/python -m alembic upgrade head`
+  - `PYTHONUTF8=1 .venv/bin/python scripts/backfill_mastery.py`
+  - tests: `./scripts/dev.sh test`
+- **Test results:**
+  - pytest **292 passed** with a local Hardhat node. The 20 new tests are in `tests/test_mastery.py`:
+    - BKT steps checked against values worked out by hand (correct/wrong/partial, MCQ and short, two correct in a row);
+    - status thresholds;
+    - an attempt updates only the target concepts, and context-only concepts stay untested;
+    - all concepts are listed with sections and facts;
+    - ordering across all four statuses;
+    - case-insensitive merge;
+    - owner-only access (404 / 404 / 401);
+    - backfill equals the live updates over 3 quizzes with retests, and a second run gives the same rows.
+  - `test_migrations` checks the new table.
+  - Web: `tsc --noEmit` and `npm run lint` are clean.
+- **Stats (dev DB after backfill):**
+  - 11 attempts, 71 answers, 6 user+document pairs.
+  - Summary over all pairs: weak 36, learning 20, mastered 2, untested 2200.
+  - Most concepts are untested because the sample has about 480 facts and only a few quizzes were taken.
+  - A second run printed the same numbers.
+  - 5 weakest concepts:
+    - 0.174 "Access control steps" (2 wrong)
+    - 0.174 "Password" (2 wrong)
+    - 0.177 "Reputational impact" (Case: Target Corporation)
+    - 0.177 "IR phase count" (Case: iPremier)
+    - 0.177 "Committee terms" (What a policy is)
+- **Open issues:**
+  - With p_init 0.2, one wrong answer (0.177) and one untested concept (0.2) are close. The gap report keeps them apart by status, not by p.
+  - Reaching "mastered" from scratch takes 3 correct answers in a row (0.553 → 0.844 → 0.958). The demo needs 3 attempts on one concept to show a mastered row.
+  - Two simultaneous submits of different quizzes on a concept that has no row yet could race on the first insert. The upsert stops a crash, but one update would be lost. This is very unlikely with one learner.
+  - No commits made: Deepesh commits and pushes.

@@ -6,14 +6,14 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth import get_current_user
 from app.chain.service import explorer_url
 from app.config import get_settings
 from app.db import get_db
-from app.models import Attempt, Document, Fact, FactCoverage, GenerationLog, Question, Quiz, Section, User
+from app.learn.grading import on_final_grade
+from app.models import Attempt, Document, Fact, GenerationLog, Question, Quiz, Section, User
 from app.quiz.job import get_progress, run_quiz_job
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
@@ -330,23 +330,8 @@ def submit_attempt(
     results = _build_result(db, facts, questions, body.answers, attempt_id)
     now = datetime.now(timezone.utc)
     for q, r in zip(questions, results.results):
-        correct = r.correct
-        target = facts[q.target_fact_idx]
-        # Coverage tracks the target fact only, never the context facts.
-        stmt = insert(FactCoverage).values(
-            user_id=user.id, fact_id=target.id, times_tested=1, last_correct=correct, last_bloom=q.bloom_level, updated_at=now
-        )
-        db.execute(
-            stmt.on_conflict_do_update(
-                index_elements=[FactCoverage.user_id, FactCoverage.fact_id],
-                set_={
-                    "times_tested": FactCoverage.times_tested + 1,
-                    "last_correct": correct,
-                    "last_bloom": q.bloom_level,
-                    "updated_at": now,
-                },
-            )
-        )
+        # MCQ grades are final at submit: coverage + mastery in this transaction.
+        on_final_grade(db, user.id, facts[q.target_fact_idx], q.bloom_level, "correct" if r.correct else "wrong", now)
 
     attempt = Attempt(
         id=attempt_id,

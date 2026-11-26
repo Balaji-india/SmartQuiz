@@ -109,6 +109,25 @@ export type MetricsOut = {
   bloom_mismatches: number;
 };
 
+export type MasteryStatus = "weak" | "learning" | "untested" | "mastered";
+
+export type ConceptMastery = {
+  concept: string;
+  section_id: number;
+  section: string;
+  p_mastery: number;
+  answered: number;
+  status: MasteryStatus;
+  fact_idxs: number[];
+  badge_id: string | null;
+};
+
+export type MasteryOut = {
+  document_id: string;
+  summary: Record<MasteryStatus, number>;
+  concepts: ConceptMastery[]; // weak (lowest first), learning, untested, mastered
+};
+
 export type VerifiedFact = {
   idx: number;
   text: string;
