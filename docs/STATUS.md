@@ -290,3 +290,11 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - Gate 2 adds a third parallel checker call; a quiz now takes 75–110 s (Review 1: about 60 s) because of the checker's 8000 TPM.
   - Requests per quiz: 1–2 generator + 6–8 checker when the JSON is fine.
   - No commits made: Deepesh commits and pushes.
+
+### R01 follow-up: checker BadJSON no longer fails a quiz (2026-11-26, Fedora)
+- **Done:** `gates._batch` (shared by Gates 1–4) treats a `BadJSONError` (Groq `json_validate_failed` twice) as a call with no results and logs a warning. The ids still missing get the existing attempt = 1 retry, a new cache key and so a fresh reply, and after that the existing rule applies: Gates 1–3 fail closed, and Gate 4 counts it as a blind miss with reason "checker returned no verdict". A daily limit or any other `LLMError` still stops the job. This fixes the failed quiz `86c723fd` from the R01 real run. Worst case per gate is now 4 checker requests (2 tries per call, 2 calls).
+- **How to run:** `./scripts/dev.sh test`.
+- **Test results:** pytest **243 passed** with a local Hardhat node (4 new: bad JSON then a good retry passes; bad JSON on both calls fails closed in all four gates without raising; a daily limit still raises; a quiz whose Gate 4 never returns JSON is `ready`, not `failed`). Not re-run against Groq: the failing reply cannot be reproduced on demand, and the change only touches the exception path.
+- **Open issues:**
+  - A Gate 4 miss sets dependence to 1.0, the Review 1 rule. If Gate 4 fails for a whole quiz, that quiz's dependence and the metrics average are overstated. The reason is logged ("checker returned no verdict"), so it can be counted. Excluding those questions from `avg_dependence` would be a small metrics change (team decision).
+  - The root cause (Qwen's reasoning likely filling `CHECKER_MAX_TOKENS=1000`) is not fixed; testing `CHECKER_REASONING_EFFORT` is still open.

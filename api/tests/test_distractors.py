@@ -354,3 +354,66 @@ def test_results_carry_misconceptions_with_sources_after_submit(client, test_eng
             assert all(s["text"] and s["section"] for s in m["sources"])
     reloaded = client.get(f"/attempts/{result['attempt_id']}", headers=headers).json()
     assert reloaded == result
+
+
+# --- checker JSON-mode failures (BadJSONError) ---------------------------------------------
+
+
+def _bad_json(*_a, **_k):
+    raise provider.BadJSONError("checker could not produce valid JSON (status 400, json_validate_failed)")
+
+
+def test_bad_json_counts_as_no_results_and_gets_the_attempt_1_retry(monkeypatch):
+    c = _candidate()
+    attempts = []
+
+    def flaky(role, system, user, attempt=0):
+        attempts.append(attempt)
+        if attempt == 0:
+            _bad_json()
+        u = json.loads(user)
+        return {"results": [{"id": i["id"], "verdicts": [{"d": d["d"], "verdict": "FALSE"} for d in i["distractors"]]} for i in u["items"]]}
+
+    monkeypatch.setattr(gates.provider, "generate_json", flaky)
+    gates.gate2_distractors([c], {5: "a", 6: "b"})
+    assert attempts == [0, 1] and c.gate_results["gate2"]["passed"]
+
+
+def test_bad_json_twice_fails_closed_without_raising(monkeypatch):
+    c = _candidate()
+    monkeypatch.setattr(gates.provider, "generate_json", _bad_json)
+    gates.gate1_grounding([c], {5: "a", 6: "b"})
+    gates.gate2_distractors([c], {5: "a", 6: "b"})
+    gates.gate3_solvability([c], {5: "a", 6: "b"})
+    gates.gate4_dependence([c])
+    assert c.gate_results["gate1"] == {"verdict": "NOT_SUPPORTED", "reason": gates.NO_VERDICT}
+    assert not c.gate_results["gate2"]["passed"] and not c.gate_results["gate3"]["passed"]
+    assert c.gate_results["gate4"] == {"choice": -1, "confidence": 0, "reason": gates.NO_VERDICT}
+
+
+def test_daily_limit_still_stops_the_gate(monkeypatch):
+    def limit(*_a, **_k):
+        raise provider.DailyLimitError("checker daily limit reached")
+
+    monkeypatch.setattr(gates.provider, "generate_json", limit)
+    with pytest.raises(provider.DailyLimitError):
+        gates.gate4_dependence([_candidate()])
+
+
+def test_gate4_bad_json_no_longer_fails_the_quiz(client, calls, test_engine, monkeypatch):
+    headers, doc_id = ready_document(client)
+    real = gates.provider.generate_json
+
+    def gate4_breaks(role, system, user, attempt=0):
+        if system.startswith(provider.TASK_GATE_DEPENDENCE):
+            calls.log.append((role, provider.TASK_GATE_DEPENDENCE, attempt))
+            _bad_json()
+        return real(role, system, user, attempt)
+
+    monkeypatch.setattr(gates.provider, "generate_json", gate4_breaks)
+    quiz = make_quiz(client, headers, doc_id)
+    assert client.get(f"/quizzes/{quiz['id']}", headers=headers).json()["status"] == "ready"
+    assert [a for _, t, a in calls.log if t == provider.TASK_GATE_DEPENDENCE] == [0, 1]
+    with Session(test_engine) as db:
+        questions = db.scalars(select(Question)).all()
+    assert len(questions) == 5 and all(q.gate_results["gate4"]["reason"] == gates.NO_VERDICT for q in questions)

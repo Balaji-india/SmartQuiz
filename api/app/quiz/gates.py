@@ -2,8 +2,11 @@
 
 Results go into gate_results with integers only, so the quiz hash is stable. Missing verdicts are
 retried once (attempt=1), then fail closed (gates 1, 2 and 3) or count as a blind miss (gate 4).
+A reply that breaks JSON mode (BadJSONError) counts as a reply with no results, so it gets that same retry
+instead of failing the whole quiz. A daily limit or any other LLM error still stops the job.
 """
 import json
+import logging
 import random
 
 from app.llm import provider
@@ -14,6 +17,8 @@ from app.quiz.prompts import (
     GATE_GROUNDING_SYSTEM,
     GATE_SOLVABILITY_SYSTEM,
 )
+
+log = logging.getLogger(__name__)
 
 NO_VERDICT = "checker returned no verdict"
 FLAG_GENERAL_BELOW = 0.3
@@ -35,7 +40,11 @@ def _batch(system: str, items: list[dict]) -> dict[int, dict]:
         return {}
 
     def call(batch: list[dict], attempt: int) -> dict[int, dict]:
-        reply = provider.generate_json("checker", system, json.dumps({"items": batch}, ensure_ascii=False), attempt=attempt)
+        try:
+            reply = provider.generate_json("checker", system, json.dumps({"items": batch}, ensure_ascii=False), attempt=attempt)
+        except provider.BadJSONError as exc:
+            log.warning("%s attempt %d: %s; treating it as no results", system.split("]", 1)[0] + "]", attempt, exc)
+            return {}
         results = reply.get("results") if isinstance(reply, dict) else reply if isinstance(reply, list) else []
         wanted = {item["id"] for item in batch}
         found = {}
