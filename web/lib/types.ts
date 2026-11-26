@@ -39,7 +39,7 @@ export type QuestionOut = {
   position: number;
   stem: string;
   options: string[];
-  bloom_level: "remember" | "understand";
+  bloom_level: "remember" | "understand" | "apply" | "analyze";
   flagged_general: boolean;
   fact_idxs: number[] | null; // only after the attempt is submitted
 };
@@ -105,6 +105,8 @@ export type MetricsOut = {
   repeat_rate_between_quizzes: number;
   same_family_checker_used: boolean;
   same_family_gate_calls: number;
+  bloom_levels: Record<"remember" | "understand" | "apply" | "analyze", number>;
+  bloom_mismatches: number;
 };
 
 export type VerifiedFact = {

@@ -298,3 +298,29 @@ Every slash command appends an entry here. `/status` adds a summary block under 
 - **Open issues:**
   - A Gate 4 miss sets dependence to 1.0, the Review 1 rule. If Gate 4 fails for a whole quiz, that quiz's dependence and the metrics average are overstated. The reason is logged ("checker returned no verdict"), so it can be counted. Excluding those questions from `avg_dependence` would be a small metrics change (team decision).
   - The root cause (Qwen's reasoning likely filling `CHECKER_MAX_TOKENS=1000`) is not fixed; testing `CHECKER_REASONING_EFFORT` is still open.
+
+### R02 — Bloom's ladder (2026-11-26, Fedora)
+- **Done:**
+  - `BLOOM_LEVELS = remember, understand, apply, analyze` (`app/quiz/select.py`). New targets still alternate remember / understand. Retests use `next_bloom(previous, last_correct)` (SPEC 9.3): right → one up, wrong → one down. Tier 3 (asked, never answered) → one up. At the cap or floor it takes the neighbour (analyze → apply, remember → understand), so the level never repeats. The question stores the ladder's level; the generator's echoed `bloom_level` is ignored, so it cannot undo the ladder.
+  - Generator prompt: one line per level, and every level must be answerable from the cited facts alone. Gate 1 prompt asks for `"bloom"` with the same definitions; the checker is not told the asked level. `gate_results.gate1.bloom` is one of the four or `null` (missing or unknown), and it never changes the verdict. A mismatch writes a `generation_log` row `gate="bloom_mismatch"`, `passed=true`; the question is kept and it is not counted as a rejection.
+  - `MetricsOut.bloom_levels` (accepted questions per level, all 4 keys) and `bloom_mismatches` (accepted questions whose Gate 1 label is set and differs). `web/lib/types.ts` updated (UI is R09). SPEC sections 1, 4 and 9.3 updated (tier 3 rule, `null` label, mismatch row).
+  - Fixed a flaky R01 test (`test_gate2_failures_join_the_one_regeneration` picked the failing gate by `fact_idx % 3`, so about 6% of random target sets had no Gate 2 failure); it now keys on the batch id. 15/15 runs pass.
+- **How to run:** `./scripts/dev.sh test`. No migration (`bloom_level` is already `String(16)`).
+- **Test results:** pytest **266 passed** with a local Hardhat node (243 before + 23 new in `tests/test_bloom.py`: 11 ladder transitions incl. caps, floor and tier 3; prompts name all four levels; selection over a fully used document gives the ladder level and tier per history; retest fingerprint differs from the earlier question; the generator's echo is ignored; Gate 1 bloom parsing (valid, missing, unknown, null, with NOT_SUPPORTED) never changes the verdict; the asked level is not in the Gate 1 payload; mismatch rows logged and questions kept; metrics counts incl. a question without a label). One R01 assertion updated for the new `bloom` key. Web `tsc` and lint clean.
+- **Real run** (Groq, chain disabled; a `.txt` of one sample section, "Access control: four steps", ingested as a new document `1b279f76…` with 8 facts for a new user; script in the session scratchpad):
+
+  | Quiz | Accepted | Rejected | Requests (gen + chk) | Answers | Levels before → after |
+  | --- | --- | --- | --- | --- | --- |
+  | 1 | 2 | generator_error 9, gate2 3 | 2 + 7 | 1/2 | new → remember ×2 |
+  | 2 | 3 | generator_error 12, gate1 1 | 2 + 4 | 1/3 | new → remember ×2, understand ×1 |
+  | 3 | 4 | generator_error 7, dup_cosine 3 | 2 + 7 | 4/4 | new ×3; fact 7: remember (wrong) → **understand** (floor neighbour) |
+  | 4 | 3 | dup_cosine 5 | 1 + 6 | 2/3 | fact 1: remember (right) → **understand**; fact 6: remember (right) → **understand**; fact 2: understand (right) → **apply** (checker agreed) |
+  | 5 | 0 (failed) | generator_error 8, dup_cosine 3, dup_fingerprint 1, gate1 1 | 2 + 11 | — | — |
+
+  Ingest: 1 + 1 requests. Metrics: `bloom_levels` remember 6, understand 5, apply 1, analyze 0; `bloom_mismatches` 5 of 12. The Qwen checker labels nearly everything "remember" (it agreed on 1 understand and 1 apply). avg_dependence 0.06: these are textbook definitions of access control, so the blind checker knows them (expected for this section, not a Bloom result).
+- **Open issues:**
+  - **The stem cosine check blocks retests (team decision).** 12 of 13 duplicates on the small document were `dup_cosine` (0.86–0.98): a retest of the same fact at a new level still asks about the same thing, so its stem embedding is close to the earlier one. The fingerprint (facts + level) already differs. Options: skip the cosine check against earlier questions with the same target fact when the level differs, or raise the threshold for those. This changes SPEC 4 / CLAUDE.md rule 4 ("Backup"), so not done. On the 482-fact sample this hardly shows until unused facts run out, but R05 review mode (9.6) checks only within the quiz, so it is not affected.
+  - On a small document the generator often cites facts from neighbouring items (21 × "distractor fact_idxs cites a fact outside this item", 7 × "more than 2 context facts"): every item's context is the same section. This is R01 validation working as designed; the cost is the regeneration call. Quiz 5 failed because all 8 facts were used up and every retry was a duplicate or invalid, which is the SPEC 4 rule ("If it cannot produce any question … failed").
+  - The checker's Bloom labels lean to "remember" (5 of 12 accepted questions mismatched), so `bloom_mismatches` mainly measures checker strictness. Worth one sentence in the report.
+  - Retesting with 4 levels can return to an earlier level (right then wrong); its fingerprint can match an older question and the SPEC 4 rule drops it (seen once: `dup_fingerprint` in quiz 5).
+  - No commits made: Deepesh commits and pushes.

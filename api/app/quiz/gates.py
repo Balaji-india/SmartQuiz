@@ -11,6 +11,7 @@ import random
 
 from app.llm import provider
 from app.quiz.generate import Candidate
+from app.quiz.select import BLOOM_LEVELS
 from app.quiz.prompts import (
     GATE_DEPENDENCE_SYSTEM,
     GATE_DISTRACTORS_SYSTEM,
@@ -90,7 +91,9 @@ def gate1_grounding(candidates: list[Candidate], fact_text: dict[int, str]) -> N
             verdict, reason = "NOT_SUPPORTED", NO_VERDICT
         else:
             reason = _reason(r)
-        c.gate_results["gate1"] = {"verdict": verdict, "reason": reason}
+        # The checker's own Bloom label (SPEC 9.3); missing or unknown → None. It never changes the verdict.
+        bloom = str(r.get("bloom", "")).strip().lower() if r else ""
+        c.gate_results["gate1"] = {"verdict": verdict, "bloom": bloom if bloom in BLOOM_LEVELS else None, "reason": reason}
 
 
 def gate2_distractors(candidates: list[Candidate], fact_text: dict[int, str]) -> None:

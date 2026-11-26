@@ -180,20 +180,20 @@ def test_gate2_failures_join_the_one_regeneration(client, calls, test_engine):
     headers, doc_id = ready_document(client)
 
     def rewrite(task, user, attempt, reply):
-        # First generation round: gate1 fails fact 0's question, gate2 fails every other first-round question but one,
-        # gate3 fails that one. Everything passes on the retry.
+        # First generation round, by batch position (the same ids in all three gate calls, so it does not depend on
+        # which facts were picked): id % 3 == 0 fails gate2, == 1 gate1, == 2 gate3. Everything passes on the retry.
         stems = {item["id"]: item["stem"] for item in user.get("items", []) if "stem" in item}
         for result in reply.get("results", []) if isinstance(reply, dict) else []:
             stem = stems.get(result.get("id"), "")
             if not stem or _stem_try(stem) != 0:
                 continue
-            fact = _stem_fact(stem)
-            if task == provider.TASK_GATE_DISTRACTORS and fact % 3 == 0:
+            slot = result["id"] % 3
+            if task == provider.TASK_GATE_DISTRACTORS and slot == 0:
                 result["verdicts"][0]["verdict"] = "TRUE"
                 result["reason"] = "the facts make it correct too"
-            if task == provider.TASK_GATE_GROUNDING and fact % 3 == 1:
+            if task == provider.TASK_GATE_GROUNDING and slot == 1:
                 result["verdict"] = "NOT_SUPPORTED"
-            if task == provider.TASK_GATE_SOLVABILITY and fact % 3 == 2:
+            if task == provider.TASK_GATE_SOLVABILITY and slot == 2:
                 result["choice"] = (result["choice"] + 1) % 4
         return reply
 
@@ -386,7 +386,7 @@ def test_bad_json_twice_fails_closed_without_raising(monkeypatch):
     gates.gate2_distractors([c], {5: "a", 6: "b"})
     gates.gate3_solvability([c], {5: "a", 6: "b"})
     gates.gate4_dependence([c])
-    assert c.gate_results["gate1"] == {"verdict": "NOT_SUPPORTED", "reason": gates.NO_VERDICT}
+    assert c.gate_results["gate1"] == {"verdict": "NOT_SUPPORTED", "bloom": None, "reason": gates.NO_VERDICT}
     assert not c.gate_results["gate2"]["passed"] and not c.gate_results["gate3"]["passed"]
     assert c.gate_results["gate4"] == {"choice": -1, "confidence": 0, "reason": gates.NO_VERDICT}
 

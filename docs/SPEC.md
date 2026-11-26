@@ -11,7 +11,7 @@ If a shape here must change, change it here first, then in code, and note it in 
 | sections | id serial pk, document_id fk, parent_id nullable, heading, level int, page_start, page_end, position int |
 | facts | id serial pk, document_id fk, section_id fk, idx int (0-based, unique per document), concept, text, quote, page, char_start, char_end, text_hash (hex), leaf_hash (hex), embedding vector(384) |
 | quizzes | id uuid pk, user_id fk, document_id fk, status (`generating`/`ready`/`failed`), quiz_hash (hex, nullable until ready), salt (hex, nullable until ready), commit_tx nullable, time_limit_sec int, started_at nullable, created_at |
-| questions | id uuid pk, quiz_id fk, position int, stem, options jsonb (list of 4 strings), answer_index int, fact_idxs int[] (facts.idx values, sorted ascending), target_fact_idx int (facts.idx, always in fact_idxs), bloom_level (`remember`/`understand`), fingerprint, gate_results jsonb, dependence_score float, flagged_general bool, stem_embedding vector(384) |
+| questions | id uuid pk, quiz_id fk, position int, stem, options jsonb (list of 4 strings), answer_index int, fact_idxs int[] (facts.idx values, sorted ascending), target_fact_idx int (facts.idx, always in fact_idxs), bloom_level (`remember`/`understand`/`apply`/`analyze`, SPEC 9.3), fingerprint, gate_results jsonb, dependence_score float, flagged_general bool, stem_embedding vector(384) |
 | attempts | id uuid pk, quiz_id fk, user_id fk, answers jsonb, score int, total int, time_taken_sec int, created_at |
 | fact_coverage | user_id, fact_id (facts.id), times_tested int, last_correct bool, last_bloom, updated_at — pk (user_id, fact_id) |
 | generation_log | id serial pk, document_id fk, quiz_id nullable, candidate_id uuid nullable (one per generator output), gate (`gate0_fact`/`gate1`/`gate3`/`gate4`/`dup_fingerprint`/`dup_cosine`/`generator_error`), passed bool, reason text, same_family_fallback bool default false, created_at |
@@ -131,7 +131,7 @@ Selection (N target facts, for this user + document), in order:
 Spread across sections proportional to fact count; max 2 targets per concept.
 Only the target fact counts as used or covered. A context fact in `fact_idxs` does not. "0 repeated facts" means 0 repeated target facts, and holds until unused facts run out.
 
-Retesting a fact (tiers 2–4): ask for the other `bloom_level` than `last_bloom` (or than the earlier question's level), so the fingerprint differs. If still a duplicate, drop it and take the next fact.
+Retesting a fact (tiers 2–4): the next `bloom_level` on the ladder from `last_bloom` (or from the earlier question's level), per SPEC 9.3, so the fingerprint differs. If still a duplicate, drop it and take the next fact.
 
 Generator prompt output (JSON): `{"questions":[{"target_idx", "stem", "options":[4], "answer_index", "fact_idxs":[target + up to 2 same-section idx], "bloom_level"}]}` (`target_idx` maps each question back to its target). Context offered per target: up to 4 same-section facts nearest by idx. A reply item that is missing or malformed is logged as `generator_error` and joins the batched regeneration. First call: N targets + max(2, ceil(0.3·N)) spares, interleaved across sections so the first N kept stay spread.
 Gates run as one batched checker call each (Gate 1 and Gate 3 in parallel, then Gate 4 on the survivors); ids still missing get one more call with attempt = 1, then fail closed. Gate 3 and Gate 4 see the options shuffled (seeded by candidate_id).
@@ -259,9 +259,10 @@ version stored on the quiz; Review 1 quizzes stay v1 and must still match (regre
 ### 9.3 R02 — Bloom's ladder
 `BLOOM_LEVELS = remember, understand, apply, analyze`. New targets alternate remember / understand (as now).
 Retest (tiers 2–4 and review mode): `last_correct = true` → one level up (cap `analyze`); `false` → one level down (floor `remember`).
-If that equals the earlier level (cap or floor), use the neighbouring level so the fingerprint differs.
-Gate 1 output adds `"bloom":"apply"` (the checker's own judgement, no extra call) → `gate_results.gate1.bloom`. A mismatch is logged, not dropped.
-`MetricsOut` adds `"bloom_levels":{"remember":4,"understand":3,"apply":2,"analyze":1}` and `"bloom_mismatches":2`.
+Tier 3 (asked, never answered): one level up. If that equals the earlier level (cap or floor), use the neighbouring level so the fingerprint differs.
+The question stores the ladder's level; the generator's echoed `bloom_level` is ignored.
+Gate 1 output adds `"bloom":"apply"` (the checker's own judgement, no extra call; it is not told the asked level) → `gate_results.gate1.bloom`, `null` if missing or not one of the four. A mismatch is logged as a `generation_log` row `gate="bloom_mismatch"`, `passed=true`, not dropped, and is not counted in `rejected_by_gate`.
+`MetricsOut` adds `"bloom_levels":{"remember":4,"understand":3,"apply":2,"analyze":1}` and `"bloom_mismatches":2` (accepted questions; a `null` label is not a mismatch).
 
 ### 9.4 R03 — Mastery (BKT) and gap report
 DB `mastery`: user_id, document_id, concept, p_mastery float, answered int, updated_at — pk (user_id, document_id, concept).

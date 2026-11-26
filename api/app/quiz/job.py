@@ -116,6 +116,8 @@ class _Run:
         for c in valid:
             g1, g2, g3 = c.gate_results["gate1"], c.gate_results["gate2"], c.gate_results["gate3"]
             self.log(c, "gate1", gates.passed_gate1(c), f"{g1['verdict']}: {g1['reason']}", checker=True)
+            if g1.get("bloom") and g1["bloom"] != c.bloom_level:  # logged only, never dropped (SPEC 9.3)
+                self.log(c, "bloom_mismatch", True, f"asked {c.bloom_level}, checker says {g1['bloom']}")
             self.log(c, "gate2", gates.passed_gate2(c), g2["reason"], checker=True)
             self.log(c, "gate3", gates.passed_gate3(c), g3["reason"], checker=True)
             if not gates.passed_gate1(c):

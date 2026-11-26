@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from app.llm import provider
 from app.models import Fact
 from app.quiz.prompts import GENERATE_QUESTIONS_SYSTEM, REGENERATE_NOTE
-from app.quiz.select import BLOOM_LEVELS, Target
+from app.quiz.select import Target
 
 MAX_CONTEXT_FACTS = 2
 MAX_MISCONCEPTION_WORDS = 12
@@ -121,8 +121,8 @@ def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
     c.answer_index = order.index(answer)
     # option was in the generator's order; store it in the shown order, sorted by option.
     c.distractors = sorted(({**d, "option": order.index(d["option"])} for d in distractors), key=lambda d: d["option"])
-    level = raw.get("bloom_level")
-    c.bloom_level = level if level in BLOOM_LEVELS else target.bloom_level
+    # The ladder decides the level (SPEC 9.3); the generator's echo is ignored so it cannot repeat a fingerprint.
+    c.bloom_level = target.bloom_level
     return c
 
 

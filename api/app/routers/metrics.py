@@ -30,6 +30,8 @@ class MetricsOut(BaseModel):
     repeat_rate_between_quizzes: float
     same_family_checker_used: bool
     same_family_gate_calls: int
+    bloom_levels: dict[str, int]
+    bloom_mismatches: int
 
 
 @router.get("/{document_id}", response_model=MetricsOut)

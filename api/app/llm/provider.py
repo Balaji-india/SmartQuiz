@@ -354,7 +354,7 @@ def _fake_gate(system: str, user: str) -> dict:
     results = []
     for item in json.loads(user)["items"]:
         if TASK_GATE_GROUNDING in system:
-            results.append({"id": item["id"], "verdict": "SUPPORTED", "reason": "fake"})
+            results.append({"id": item["id"], "verdict": "SUPPORTED", "bloom": "remember", "reason": "fake"})
             continue
         if TASK_GATE_DISTRACTORS in system:
             results.append({"id": item["id"], "verdicts": [{"d": d["d"], "verdict": "FALSE"} for d in item["distractors"]]})

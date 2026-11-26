@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import GenerationLog, Question, Quiz
+from app.quiz.select import BLOOM_LEVELS
 
 QUESTION_GATES = ("gate1", "gate2", "gate3", "generator_error")
 DUPLICATE_GATES = {"dup_fingerprint": "fingerprint", "dup_cosine": "cosine"}
@@ -35,7 +36,10 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
     same_family_calls = sum(1 for r in logs if r.same_family_fallback)
 
     questions = db.execute(
-        select(Question.quiz_id, Question.target_fact_idx, Question.dependence_score, Question.flagged_general).where(
+        select(
+            Question.quiz_id, Question.target_fact_idx, Question.dependence_score, Question.flagged_general,
+            Question.bloom_level, Question.gate_results,
+        ).where(
             Question.quiz_id.in_(quiz_ids)
         )
     ).all() if quiz_ids else []
@@ -62,4 +66,11 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
         "repeat_rate_between_quizzes": round(repeated / len(quizzes_per_target), 3) if quizzes_per_target else 0.0,
         "same_family_checker_used": same_family_calls > 0,
         "same_family_gate_calls": same_family_calls,
+        # Accepted questions per asked level, and how many the Gate 1 checker labelled differently (SPEC 9.3).
+        "bloom_levels": {level: sum(1 for q in questions if q.bloom_level == level) for level in BLOOM_LEVELS},
+        "bloom_mismatches": sum(1 for q in questions if _checker_bloom(q) not in (None, q.bloom_level)),
     }
+
+
+def _checker_bloom(q) -> str | None:
+    return ((q.gate_results or {}).get("gate1") or {}).get("bloom")

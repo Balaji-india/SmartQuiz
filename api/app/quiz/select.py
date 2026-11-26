@@ -7,6 +7,7 @@ Tiers, for this user + document:
   4. oldest tested
 Spread across sections in proportion to their fact counts; at most 2 targets per concept.
 Only the target fact counts as used; context facts in fact_idxs do not.
+Retests climb Bloom's ladder (SPEC 9.3): up after a right answer, down after a wrong one.
 """
 import random
 import uuid
@@ -20,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.models import Fact, FactCoverage, Question, Quiz
 
 MAX_PER_CONCEPT = 2
-BLOOM_LEVELS = ("remember", "understand")
+BLOOM_LEVELS = ("remember", "understand", "apply", "analyze")
 
 
 @dataclass(frozen=True)
@@ -28,11 +29,19 @@ class Target:
     fact: Fact
     tier: int
     bloom_level: str  # the level to ask for
-    previous_bloom: str | None  # set on a retest: the new question must use the other level
+    previous_bloom: str | None  # set on a retest: the level of the earlier question
 
 
-def _other(level: str | None) -> str:
-    return "understand" if level == "remember" else "remember"
+def next_bloom(previous: str | None, last_correct: bool | None) -> str:
+    """SPEC 9.3. Right → one level up (cap analyze), wrong → one down (floor remember).
+    None (asked but never answered, tier 3) → one up. If the cap or floor gives the earlier level again,
+    take the neighbouring level, so the fingerprint differs."""
+    i = BLOOM_LEVELS.index(previous) if previous in BLOOM_LEVELS else 0
+    step = -1 if last_correct is False else 1
+    j = min(max(i + step, 0), len(BLOOM_LEVELS) - 1)
+    if j == i:
+        j = i - step
+    return BLOOM_LEVELS[j]
 
 
 def _proportional_quota(counts: dict[int, int], n: int, rng: random.Random) -> dict[int, int]:
@@ -135,8 +144,9 @@ def select_targets(db: Session, user_id: uuid.UUID, document_id: uuid.UUID, n: i
             if concepts[key] >= MAX_PER_CONCEPT:
                 continue
             concepts[key] += 1
-            previous = coverage[fact.id].last_bloom if fact.id in coverage else used_bloom.get(fact.idx)
-            targets.append(Target(fact, tier, _other(previous), previous))
+            row = coverage.get(fact.id)
+            previous = row.last_bloom if row else used_bloom.get(fact.idx)
+            targets.append(Target(fact, tier, next_bloom(previous, row.last_correct if row else None), previous))
     return targets
 
 
