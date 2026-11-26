@@ -390,3 +390,47 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - Reaching "mastered" from scratch takes 3 correct answers in a row (0.553 → 0.844 → 0.958). The demo needs 3 attempts on one concept to show a mastered row.
   - Two simultaneous submits of different quizzes on a concept that has no row yet could race on the first insert. The upsert stops a crash, but one update would be lost. This is very unlikely with one learner.
   - No commits made: Deepesh commits and pushes.
+
+### R04 — Revision notes for weak concepts (2026-11-26, Fedora)
+- **Done:**
+  - Migration `0005_revision_notes` and the `RevisionNote` model (SPEC 9.5), indexed on (user, document, concept, created_at).
+  - `app/learn/revision.py`:
+    - **Picking concepts:** with no list, the 3 weakest weak/learning concepts in gap-report order (409 if none). With a list, names match case-insensitively; an unknown name or more than 5 gives 422.
+    - **One generator call** (`REVISION_NOTES_SYSTEM`) that gets only those concepts' facts.
+    - **Validation:** a sentence is dropped and counted if its text is empty or over 400 characters, if its `fact_idxs` are empty or not all from its own concept, or if it comes after the 6th.
+    - **One batched Gate 1 call:** `GATE_REVISION_SYSTEM`, a statement form of the Gate 1 prompt, through `gates._batch`. Ids without a verdict get one retry, then fail closed. `NOT_SUPPORTED` means dropped and counted.
+    - One `generation_log` row per checked sentence: gate `revision_gate1`, quiz_id null, candidate_id = the note id.
+  - `POST` and `GET /documents/{id}/revision -> RevisionOut` in `app/routers/learn.py`:
+    - owner only (404);
+    - POST gives 409 when the document isn't ready or nothing is weak or learning, 429 at the daily LLM limit, and 502 on any other LLM failure, and nothing is stored on an error;
+    - GET returns the latest note per concept, weakest first.
+  - FAKE provider handlers for both new prompts.
+  - `web/lib/types.ts` adds `RevisionOut`.
+  - SPEC 9.5 gains a details paragraph: validation, the statement Gate 1, the error codes and the order.
+- **How to run:**
+  - `cd api && PYTHONUTF8=1 .venv/bin/python -m alembic upgrade head` (the dev DB is at 0005)
+  - `POST /documents/{id}/revision {"concepts": null}`
+  - tests: `./scripts/dev.sh test`
+- **Test results:**
+  - pytest **300 passed** with a local Hardhat node. The 8 new tests are in `tests/test_revision.py`:
+    - the 409 path spends no request;
+    - null picks the 3 weakest, using exactly 1 generator call and 1 checker call;
+    - invalid sentences are dropped and counted: another concept's idx, partly outside, empty, bool, blank, too long, over the cap;
+    - a Gate 1 `NOT_SUPPORTED` and a missing verdict are both dropped, with one retry for the missing id only;
+    - log rows are written;
+    - GET returns the latest note per concept;
+    - owner only, plus 422 validation;
+    - a daily limit gives 429 and another LLM error gives 502, with nothing stored either way.
+  - Web: `tsc --noEmit` and `npm run lint` are clean.
+- **Stats (real Groq run, dev DB, 3 weakest concepts of the pair with the most gaps):**
+  - requests used: generator 1, checker 1; 3.3 s.
+  - "Financial impact" (2 facts): kept 2, dropped 1
+  - "Market position" (1 fact): kept 2, dropped 1
+  - "IR phases" (1 fact): kept 2, dropped 1
+  - In total, 6 sentences kept and 3 dropped.
+  - All 3 drops were Gate 1 `NOT_SUPPORTED`, each for a claim the facts don't make, such as "causal link to breach is not in facts".
+- **Open issues:**
+  - Concepts with only 1–2 facts can't support 3 distinct sentences. The generator pads, and Gate 1 removes the padding, so real notes end up with 2 sentences, under the 3–6 target. Raising the 3-sentence minimum would only add padding; letting the prompt write fewer sentences for small concepts would save checker tokens.
+  - A note with 0 sentences kept is still stored and becomes the "latest" for its concept on GET, replacing an earlier good note.
+  - Notes are generated synchronously in the request, which takes about 3 s on Groq. There is no progress state.
+  - No commits made: Deepesh commits and pushes.

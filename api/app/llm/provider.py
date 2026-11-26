@@ -36,6 +36,8 @@ TASK_GATE_SOLVABILITY = "[task:gate_solvability]"
 TASK_GATE_DISTRACTORS = "[task:gate_distractors]"
 TASK_GATE_DEPENDENCE = "[task:gate_dependence]"
 TASK_CHAT_ANSWER = "[task:chat_answer]"
+TASK_GENERATE_REVISION = "[task:generate_revision]"
+TASK_GATE_REVISION = "[task:gate_revision]"
 
 
 _DAILY_LIMIT = re.compile(r"per[ _-]?day|\b[tr]pd\b|\bdaily\b", re.IGNORECASE)
@@ -374,6 +376,16 @@ def _fake_chat_answer(user: str) -> dict:
     return {"answer": f"{first['text']} [F{first['idx']}]"}
 
 
+def _fake_generate_revision(user: str) -> dict:
+    # One sentence per fact (at most 6), citing only that fact, so every sentence passes the FAKE checker.
+    return {
+        "notes": [
+            {"concept": c["concept"], "sentences": [{"text": f["text"], "fact_idxs": [f["idx"]]} for f in c["facts"][:6]]}
+            for c in json.loads(user)["concepts"]
+        ]
+    }
+
+
 def _fake(role: str, system: str, user: str, attempt: int) -> dict:
     """Deterministic offline stand-in. Later commands extend it for their prompts."""
     if TASK_EXTRACT_FACTS in system:
@@ -386,6 +398,10 @@ def _fake(role: str, system: str, user: str, attempt: int) -> dict:
         return _fake_gate(system, user)
     if TASK_CHAT_ANSWER in system:
         return _fake_chat_answer(user)
+    if TASK_GENERATE_REVISION in system:
+        return _fake_generate_revision(user)
+    if TASK_GATE_REVISION in system:
+        return {"results": [{"id": i["id"], "verdict": "SUPPORTED", "reason": "fake"} for i in json.loads(user)["items"]]}
     return {"fake": True, "role": role, "attempt": attempt}
 
 

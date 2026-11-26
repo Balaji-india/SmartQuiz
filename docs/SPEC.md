@@ -297,6 +297,14 @@ RevisionOut = {"notes":[{"concept":"Phishing","sentences":[{"text":"…","fact_i
 One generator call for all requested concepts, given only their facts → `{"notes":[{"concept","sentences":[{"text","fact_idxs"}]}]}`.
 Each sentence's `fact_idxs` ⊆ that concept's facts, else dropped. One batched Gate 1 call (gate `revision_gate1` in
 `generation_log`) checks each sentence against its facts; `NOT_SUPPORTED` → dropped and counted.
+Details (R04): the generator gets each concept's facts as `{"concepts":[{"concept","facts":[{"idx","text"}]}]}` and writes
+3–6 plain sentences per concept. Dropped and counted before the checker: empty or > 400-char text, `fact_idxs` empty or not
+⊆ the concept's facts, any sentence after the 6th. Gate 1 here is a statement form of the Gate 1 prompt
+(`{"items":[{"id","facts","sentence"}]}` → SUPPORTED / NOT_SUPPORTED); ids without a verdict get one retry, then count as
+NOT_SUPPORTED. `generation_log` rows: quiz_id null, candidate_id = the note id. Concepts match case-insensitively (as 9.4);
+one note per requested concept is stored, even if all its sentences were dropped. Errors: 404 not owner, 409 document not ready or
+no weak/learning concept, 422 unknown concept or not 1–5 concepts, 429 daily LLM limit, 502 other LLM failure (nothing stored).
+GET orders the notes like the gap report (weakest first).
 
 ### 9.6 R05 — FSRS review mode
 DB `review_cards`: user_id, fact_id (facts.id), card jsonb (`fsrs` `Card.to_dict()`), due timestamptz, last_rating int — pk (user_id, fact_id).

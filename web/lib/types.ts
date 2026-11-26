@@ -128,6 +128,15 @@ export type MasteryOut = {
   concepts: ConceptMastery[]; // weak (lowest first), learning, untested, mastered
 };
 
+export type RevisionNote = {
+  concept: string;
+  sentences: { text: string; fact_idxs: number[] }[]; // every sentence passed Gate 1
+  dropped: number;
+  created_at: string;
+};
+
+export type RevisionOut = { notes: RevisionNote[] }; // latest note per concept, weakest first
+
 export type VerifiedFact = {
   idx: number;
   text: string;

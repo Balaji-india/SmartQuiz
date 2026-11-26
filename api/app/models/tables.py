@@ -185,3 +185,18 @@ class Mastery(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class RevisionNote(Base):
+    """Cited revision note for one concept (SPEC 9.5). sentences = [{"text", "fact_idxs"}], every one Gate 1 checked."""
+
+    __tablename__ = "revision_notes"
+    __table_args__ = (Index("ix_revision_notes_user_doc_concept", "user_id", "document_id", "concept", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=False)
+    concept: Mapped[str] = mapped_column(Text, nullable=False)
+    sentences: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    dropped: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = _created_at()

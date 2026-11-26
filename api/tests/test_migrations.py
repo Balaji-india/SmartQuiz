@@ -16,6 +16,7 @@ TABLES = {
     "fact_coverage",
     "generation_log",
     "mastery",
+    "revision_notes",
 }
 
 
