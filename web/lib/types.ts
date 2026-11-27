@@ -184,6 +184,8 @@ export type VerifyQuestionOut = {
   facts: VerifiedFact[];
   registry_address: string | null;
   explorer_url: string | null;
+  cosign: { educator_address: string; at: number; cosign_tx: string | null } | null; // at = unix seconds (chain)
+  document_revoked: boolean | null; // null when the chain could not be read
 };
 
 export type VerifyFactOut = { leaf: string; verified_on_chain: boolean | null; root: string; chain_status: ChainStatus };
@@ -195,5 +197,79 @@ export type VerifyQuizOut = {
   match: boolean | null;
   chain_status: ChainStatus;
   commit_tx: string | null;
+  explorer_url: string | null;
+};
+
+// SPEC 9.9: credentials (badges, educator actions, result and badge verification)
+export type BadgeOut = {
+  id: string;
+  document_id: string;
+  concept: string;
+  token_id: number | null;
+  holder_address: string;
+  custodial: boolean;
+  concept_hash: string;
+  evidence_hash: string;
+  mint_tx: string | null;
+  explorer_url: string | null;
+  revoked: boolean;
+  chain_status: ChainStatus;
+  created_at: string;
+};
+export type EducatorBadgeOut = BadgeOut & { learner_name: string };
+
+export type AnchorOut = { batch_id: string; root: string; count: number; anchor_tx: string | null; explorer_url: string | null; chain_status: ChainStatus };
+export type BatchOut = { batch_id: string; root: string; count: number; anchor_tx: string | null; explorer_url: string | null; created_at: string };
+export type EducatorResultsOut = { unanchored: number; pending_grading: number; batches: BatchOut[] };
+
+export type Verdict = "correct" | "partial" | "incorrect";
+export type GradingItemOut = {
+  grade_id: string;
+  attempt_id: string;
+  question_id: string;
+  stem: string;
+  model_answer: string | null;
+  answer_text: string | null;
+  checker: { verdict: Verdict | null; confidence: number | null; reason: string | null };
+  facts: { idx: number; text: string; page: number }[];
+};
+export type GradeDoneOut = { grade_id: string; attempt_id: string; grading_status: "final" | "pending_review" };
+
+export type EducatorDocumentOut = DocumentOut & {
+  cosign: { educator_address: string; at: string; cosign_tx: string | null } | null;
+  revoked: boolean;
+};
+export type CoSignResultOut = { educator_address: string; signature: string; cosign_tx: string | null; explorer_url: string | null; chain_status: ChainStatus };
+
+export type VerifyAttemptOut = {
+  attempt_id: string;
+  quiz_id: string;
+  score: number;
+  total: number;
+  attempt_hash: string;
+  recomputed_hash: string;
+  leaf: string;
+  proof: string[];
+  batch_id: string;
+  onchain_root: string | null;
+  match: boolean | null;
+  verified_on_chain: boolean | null;
+  anchor_tx: string | null;
+  explorer_url: string | null;
+  chain_status: ChainStatus;
+};
+
+export type VerifyBadgeOut = {
+  token_id: number;
+  holder_address: string;
+  document_id: string;
+  concept: string;
+  concept_hash: string;
+  evidence_hash: string;
+  evidence_attempts: string[];
+  onchain: { concept_hash: string; evidence_hash: string; issued_at: number; revoked: boolean } | null;
+  match: boolean | null;
+  revoked: boolean;
+  chain_status: ChainStatus;
   explorer_url: string | null;
 };

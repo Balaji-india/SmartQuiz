@@ -7,8 +7,8 @@ import { useLoad } from "@/lib/use-load";
 import { AuthedPage } from "@/components/shell";
 import { Button, ButtonLink, Card, ErrorBox, Loading, Stat } from "@/components/ui";
 import { FactChips, factIndex, type FactRef } from "@/components/facts";
-import { createRevision, getMastery, getRevision, getTextbook } from "@/lib/api";
-import type { ConceptMastery, MasteryOut, MasteryStatus, RevisionNote, RevisionOut, TextbookOut } from "@/lib/types";
+import { claimBadge, createRevision, getMastery, getRevision, getTextbook, listBadges } from "@/lib/api";
+import type { BadgeOut, ConceptMastery, MasteryOut, MasteryStatus, RevisionNote, RevisionOut, TextbookOut } from "@/lib/types";
 
 const STATUS: Record<MasteryStatus, { label: string; hint: string; chip: string; bar: string }> = {
   weak: { label: "Weak", hint: "below 40%", chip: "bg-bad-soft text-bad", bar: "bg-bad" },
@@ -23,11 +23,17 @@ function ConceptRow({
   facts,
   onRevise,
   busy,
+  badge,
+  onClaim,
+  claiming,
 }: {
   c: ConceptMastery;
   facts: Map<number, FactRef> | null;
   onRevise: (concept: string) => void;
   busy: boolean;
+  badge: BadgeOut | null;
+  onClaim: (concept: string) => void;
+  claiming: string | null;
 }) {
   const s = STATUS[c.status];
   const pct = Math.round(c.p_mastery * 100);
@@ -48,10 +54,20 @@ function ConceptRow({
           )}
           {c.status === "mastered" &&
             (c.badge_id ? (
-              <span className="rounded-full bg-ok-soft px-3 py-1 text-xs font-semibold text-ok">Badge minted</span>
+              <Link
+                href={badge?.token_id != null ? `/verify?badge=${badge.token_id}` : "/profile"}
+                className="rounded-full bg-ok-soft px-3 py-1 text-xs font-semibold text-ok hover:underline"
+              >
+                ✓ Badge{badge?.token_id != null ? ` #${badge.token_id}` : " minted"} · Verify
+              </Link>
             ) : (
-              <Button className="min-h-9 px-3 py-1 text-xs" disabled title="Badge claiming arrives with the profile screens (R10)">
-                Claim badge
+              <Button
+                className="min-h-9 px-3 py-1 text-xs"
+                onClick={() => onClaim(c.concept)}
+                disabled={claiming !== null}
+                title="Mint a soulbound badge for this concept on Polygon Amoy"
+              >
+                {claiming === c.concept ? "Minting on Polygon Amoy…" : "Claim badge"}
               </Button>
             ))}
         </div>
@@ -105,7 +121,27 @@ function Mastery() {
   const [generated, setGenerated] = useState<RevisionOut | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const { data: badges, reload: reloadBadges } = useLoad<BadgeOut[]>(listBadges, id);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimed, setClaimed] = useState<BadgeOut | null>(null);
   const facts = book ? factIndex(book.sections) : null;
+
+  const claim = async (concept: string) => {
+    setClaiming(concept);
+    setClaimError(null);
+    setClaimed(null);
+    try {
+      // Anchors this learner's unanchored results first, then mints (SPEC 9.9); takes a few block times.
+      setClaimed(await claimBadge(id, concept));
+      reload();
+      reloadBadges();
+    } catch (e) {
+      setClaimError(`${concept}: ${(e as Error).message}`);
+    } finally {
+      setClaiming(null);
+    }
+  };
 
   const revise = async (concept: string | null) => {
     setBusy(concept ?? "weakest");
@@ -142,6 +178,23 @@ function Mastery() {
         </div>
       </div>
 
+      {claimed && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ok-soft px-5 py-4 text-ok" role="status">
+          <p className="font-semibold">
+            ✓ Badge #{claimed.token_id} minted for “{claimed.concept}” to {claimed.custodial ? "your custodial address" : "your wallet"}.
+          </p>
+          <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+            <Link href={`/verify?badge=${claimed.token_id}`} className="underline underline-offset-2">
+              Verify it
+            </Link>
+            <Link href="/profile" className="underline underline-offset-2">
+              My badges
+            </Link>
+          </div>
+        </div>
+      )}
+      {claimError && <ErrorBox message={claimError} />}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {ORDER.map((s) => (
           <Stat key={s} label={STATUS[s].label} value={m.summary[s]} hint={STATUS[s].hint} />
@@ -161,7 +214,16 @@ function Mastery() {
                 </h2>
                 <ul className="mt-4 space-y-3">
                   {list.map((c) => (
-                    <ConceptRow key={c.concept} c={c} facts={facts} onRevise={revise} busy={busy !== null} />
+                    <ConceptRow
+                      key={c.concept}
+                      c={c}
+                      facts={facts}
+                      onRevise={revise}
+                      busy={busy !== null}
+                      badge={badges?.find((b) => b.id === c.badge_id) ?? null}
+                      onClaim={claim}
+                      claiming={claiming}
+                    />
                   ))}
                 </ul>
               </Card>

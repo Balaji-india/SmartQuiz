@@ -11,7 +11,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_educator
@@ -20,7 +20,7 @@ from app.chain.service import ChainError, chain_id_of, explorer_url, get_chain
 from app.credentials import results
 from app.db import get_db
 from app.learn.shortgrade import apply_educator_grade
-from app.models import AnswerGrade, Attempt, Badge, CoSignature, Document, Fact, Question, Quiz, User
+from app.models import AnswerGrade, Attempt, Badge, CoSignature, Document, Fact, Question, Quiz, ResultBatch, User
 from app.routers.badges import BadgeOut, badge_out, chain_http_error
 from app.routers.documents import DocumentOut, _document_out
 
@@ -34,6 +34,25 @@ class AnchorOut(BaseModel):
     anchor_tx: str | None
     explorer_url: str | None
     chain_status: str
+
+
+class BatchOut(BaseModel):
+    batch_id: str
+    root: str
+    count: int
+    anchor_tx: str | None
+    explorer_url: str | None
+    created_at: datetime
+
+
+class ResultsOut(BaseModel):
+    unanchored: int  # final attempts waiting for the next batch
+    pending_grading: int  # attempts still waiting for an educator grade (anchorable once final)
+    batches: list[BatchOut]  # newest first
+
+
+class EducatorBadgeOut(BadgeOut):
+    learner_name: str  # off chain only
 
 
 class CheckerOut(BaseModel):
@@ -109,6 +128,23 @@ def _ready_document(db: Session, document_id: uuid.UUID) -> Document:
 
 
 # ---- results ----
+@router.get("/results", response_model=ResultsOut)
+def results_overview(db: Session = Depends(get_db)) -> ResultsOut:
+    def waiting(grading_status: str) -> int:
+        return db.scalar(
+            select(func.count()).select_from(Attempt)
+            .where(Attempt.grading_status == grading_status, Attempt.batch_id.is_(None))
+        )
+
+    batches = db.scalars(select(ResultBatch).order_by(ResultBatch.created_at.desc(), ResultBatch.id)).all()
+    return ResultsOut(
+        unanchored=waiting("final"),
+        pending_grading=waiting("pending_review"),
+        batches=[BatchOut(batch_id=b.batch_id, root=b.root, count=b.count, anchor_tx=b.anchor_tx,
+                          explorer_url=explorer_url(b.anchor_tx), created_at=b.created_at) for b in batches],
+    )
+
+
 @router.post("/anchor", response_model=AnchorOut)
 def anchor_results(db: Session = Depends(get_db)) -> AnchorOut:
     attempts = results.unanchored_final(db)
@@ -217,6 +253,15 @@ def revoke_document(document_id: uuid.UUID, body: ReasonIn, db: Session = Depend
 
 
 # ---- badges ----
+@router.get("/badges", response_model=list[EducatorBadgeOut])
+def list_all_badges(db: Session = Depends(get_db)) -> list[EducatorBadgeOut]:
+    rows = db.execute(
+        select(Badge, User.name).join(User, User.id == Badge.user_id)
+        .where(Badge.token_id.is_not(None)).order_by(Badge.created_at.desc(), Badge.id)
+    ).all()
+    return [EducatorBadgeOut(**badge_out(b).model_dump(), learner_name=name) for b, name in rows]
+
+
 @router.post("/badges/{badge_id}/revoke", response_model=BadgeOut)
 def revoke_badge(badge_id: uuid.UUID, body: ReasonIn, db: Session = Depends(get_db)) -> BadgeOut:
     badge = db.scalar(select(Badge).where(Badge.id == badge_id).with_for_update())

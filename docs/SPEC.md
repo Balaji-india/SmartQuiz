@@ -474,6 +474,13 @@ VerifyQuestionOut adds "cosign":{"educator_address","at","cosign_tx"}|null and "
 - `VerifyQuestionOut.cosign.at` is unix seconds from the chain; `cosign` and `document_revoked` are read only when the
   registry read succeeded and CREDENTIALS_ADDRESS is set (otherwise null).
 
+**Added in R10 (read-only, educator only, for the educator page):**
+```
+GET /educator/results -> {"unanchored":n,"pending_grading":n,"batches":[{"batch_id","root","count","anchor_tx","explorer_url","created_at"}]}
+                         (unanchored = final attempts in no batch; pending_grading = attempts still waiting for a grade; batches newest first)
+GET /educator/badges  -> [BadgeOut + {"learner_name"}]   (every minted badge, all users, newest first; the name stays off chain)
+```
+
 ### 9.10 R09–R10 — Web pages
 - `/documents/[id]/mastery`: summary tiles, concept list by status with sections and Source chips, "Revision notes"
   (generate + view, every sentence with fact chips), "Claim badge" on mastered concepts.

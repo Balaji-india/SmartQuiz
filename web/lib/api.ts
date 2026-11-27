@@ -1,9 +1,17 @@
 // One function per endpoint. Always the real API: mock data lives only in tests.
 import type {
+  AnchorOut,
   AttemptResult,
   AuthOut,
+  BadgeOut,
   ChatOut,
+  CoSignResultOut,
   DocumentOut,
+  EducatorBadgeOut,
+  EducatorDocumentOut,
+  EducatorResultsOut,
+  GradeDoneOut,
+  GradingItemOut,
   MasteryOut,
   MetricsOut,
   QuizMode,
@@ -13,6 +21,9 @@ import type {
   RevisionOut,
   TextbookOut,
   User,
+  Verdict,
+  VerifyAttemptOut,
+  VerifyBadgeOut,
   VerifyFactOut,
   VerifyQuestionOut,
   VerifyQuizOut,
@@ -86,6 +97,8 @@ export const getHealth = () => apiFetch<Health>("/health");
 export const signup = (email: string, password: string, name: string) => post<AuthOut>("/auth/signup", { email, password, name });
 export const login = (email: string, password: string) => post<AuthOut>("/auth/login", { email, password });
 export const getMe = () => apiFetch<User>("/auth/me");
+export const setWallet = (wallet_address: string | null) =>
+  apiFetch<User>("/auth/me/wallet", { method: "PUT", body: JSON.stringify({ wallet_address }) });
 
 // Documents
 export function uploadDocument(file: File): Promise<DocumentOut> {
@@ -119,8 +132,25 @@ export const getReviewSummary = (document_id: string) => apiFetch<ReviewSummaryO
 export const sendChat = (document_id: string, message: string) => post<ChatOut>("/chat", { document_id, message });
 export const getMetrics = (document_id: string) => apiFetch<MetricsOut>(`/metrics/${document_id}`);
 
+// Badges (SPEC 9.9)
+export const claimBadge = (document_id: string, concept: string) => post<BadgeOut>("/badges", { document_id, concept });
+export const listBadges = () => apiFetch<BadgeOut[]>("/badges");
+
+// Educator only (403 otherwise)
+export const getEducatorResults = () => apiFetch<EducatorResultsOut>("/educator/results");
+export const anchorResults = () => post<AnchorOut>("/educator/anchor");
+export const getGradingQueue = () => apiFetch<GradingItemOut[]>("/educator/grading");
+export const gradeAnswer = (grade_id: string, verdict: Verdict) => post<GradeDoneOut>(`/educator/grading/${grade_id}`, { verdict });
+export const listEducatorDocuments = () => apiFetch<EducatorDocumentOut[]>("/educator/documents");
+export const cosignDocument = (id: string) => post<CoSignResultOut>(`/educator/documents/${id}/cosign`);
+export const revokeDocument = (id: string, reason: string) => post<EducatorDocumentOut>(`/educator/documents/${id}/revoke`, { reason });
+export const listAllBadges = () => apiFetch<EducatorBadgeOut[]>("/educator/badges");
+export const revokeBadge = (id: string, reason: string) => post<BadgeOut>(`/educator/badges/${id}/revoke`, { reason });
+
 // Public verify
 export const verifyQuestion = (id: string) => apiFetch<VerifyQuestionOut>(`/verify/question/${id}`);
 export const verifyFact = (document_id: string, idx: number, text: string) =>
   post<VerifyFactOut>("/verify/fact", { document_id, idx, text });
 export const verifyQuiz = (id: string) => apiFetch<VerifyQuizOut>(`/verify/quiz/${id}`);
+export const verifyAttempt = (id: string) => apiFetch<VerifyAttemptOut>(`/verify/attempt/${id}`);
+export const verifyBadge = (token_id: number) => apiFetch<VerifyBadgeOut>(`/verify/badge/${token_id}`);

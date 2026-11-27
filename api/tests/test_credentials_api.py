@@ -82,6 +82,8 @@ def _master(test_engine, user_id, doc, question) -> str:
     "method,path,body",
     [
         ("post", "/educator/anchor", None),
+        ("get", "/educator/results", None),
+        ("get", "/educator/badges", None),
         ("get", "/educator/grading", None),
         ("post", f"/educator/grading/{uuid.uuid4()}", {"verdict": "correct"}),
         ("get", "/educator/documents", None),
@@ -386,3 +388,45 @@ def test_cosign_needs_a_registered_document(client, test_engine):
     assert r.status_code == 409 and "registered" in r.json()["detail"]
     assert client.post(f"/educator/documents/{uuid.uuid4()}/cosign", headers=edu).status_code == 404
     assert client.post(f"/educator/documents/{doc}/revoke", json={"reason": ""}, headers=edu).status_code == 422
+
+
+# ---- R10: educator overview endpoints (no chain needed) ----
+def test_educator_results_counts_unanchored_and_pending(client, test_engine):
+    headers, doc = ready_document(client)
+    _answered_quiz(client, test_engine, headers, doc)
+    _answered_quiz(client, test_engine, headers, doc, right=False)
+    pending = _answered_quiz(client, test_engine, headers, doc, num_short=1, short_answer="unsure, maybe")
+    assert pending["grading_status"] == "pending_review"
+    edu = _educator(client, test_engine)
+    assert client.get("/educator/results", headers=edu).json() == {"unanchored": 2, "pending_grading": 1, "batches": []}
+
+    with Session(test_engine) as db:  # one attempt already in a (recorded) batch no longer counts
+        batch = ResultBatch(id=uuid.uuid4(), batch_id="0x" + "ab" * 32, root="0x" + "cd" * 32, count=1, anchor_tx="0x" + "ef" * 32)
+        db.add(batch)
+        db.flush()
+        first = db.scalars(select(Attempt).where(Attempt.grading_status == "final").order_by(Attempt.created_at)).first()
+        first.batch_id = batch.id
+        db.commit()
+    r = client.get("/educator/results", headers=edu).json()
+    assert r["unanchored"] == 1 and r["pending_grading"] == 1
+    assert [(b["batch_id"], b["count"], b["anchor_tx"]) for b in r["batches"]] == [("0x" + "ab" * 32, 1, "0x" + "ef" * 32)]
+
+
+def test_educator_badges_lists_every_minted_badge_with_the_learner_name(client, test_engine):
+    a_headers, a_doc = ready_document(client, "a@b.com")
+    b_headers, b_doc = ready_document(client, "b@b.com")
+    with Session(test_engine) as db:
+        for i, (headers, doc, token) in enumerate([(a_headers, a_doc, 1), (b_headers, b_doc, 2), (b_headers, b_doc, None)]):
+            db.add(Badge(user_id=_user_id(client, headers), document_id=uuid.UUID(doc), concept=f"Concept {i}",
+                         token_id=token, holder_address=WALLET, custodial=False, concept_hash="0x" + "11" * 32,
+                         evidence_hash="0x" + "22" * 32, mint_tx="0x" + "33" * 32 if token else None))
+        db.commit()
+    edu = _educator(client, test_engine)
+    listed = client.get("/educator/badges", headers=edu).json()
+    assert sorted(b["token_id"] for b in listed) == [1, 2]  # an unminted row is not a badge
+    names = {b["token_id"]: b["learner_name"] for b in listed}
+    me_a = client.get("/auth/me", headers=a_headers).json()["name"]
+    assert names[1] == me_a
+    assert {"concept_hash", "holder_address", "revoked", "chain_status", "explorer_url"} <= set(listed[0])
+    # A learner still sees only their own badges.
+    assert [b["token_id"] for b in client.get("/badges", headers=a_headers).json()] == [1]

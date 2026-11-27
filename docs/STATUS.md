@@ -639,3 +639,21 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - "Claim badge" stays disabled until R10 (profile + educator screens).
   - Next.js 16.4.4 shows a security advisory on build; upgrading Next is a separate task for the team.
   - The review quiz time limit is 1 min per question (min 2 min); the practice quiz stays 10 questions / 10 min.
+
+## R10 — Web credential screens (2026-11-27)
+- **Done:**
+  - API (read-only, educator only; SPEC 9.9 "Added in R10"): `GET /educator/results` (unanchored + pending-grading counts, batches) and `GET /educator/badges` (every minted badge + learner name).
+  - `lib/types.ts` / `lib/api.ts`: BadgeOut, educator shapes, VerifyAttemptOut, VerifyBadgeOut, `cosign` + `document_revoked` on VerifyQuestionOut; one function per endpoint. `useMe()` hook (role, wallet).
+  - Header: Profile for every logged-in user, Educator for educators.
+  - `/profile`: wallet form (save / remove; the API's 422 text is shown, e.g. invalid EIP-55 checksum), custodial notice when no wallet, my badges (token #, holder + custodial/wallet chip, concept and evidence hashes, ChainBadge, mint tx and "Verify badge" links, Revoked state). `components/badges.tsx`: `BadgeCard`, `RevokeForm` (reason 1–500 chars).
+  - Mastery page: "Claim badge" mints (`POST /badges`), shows "Minting on Polygon Amoy…", then a banner with Verify and My badges links; a minted concept shows "✓ Badge #N · Verify".
+  - `/educator` (role guard: "Educators only" card; tabs in `?tab=`): Documents (fact root, co-sign status / tx, Co-sign, Revoke with reason), Grading queue (stem, learner answer, model answer, cited facts, checker verdict + confidence + reason → Correct / Partial / Incorrect), Results (waiting / pending / batches, Anchor now with root, batch id and tx), Badges (every badge with learner, Revoke with reason).
+  - `/verify`: tabs Question, Quiz, Result (`?attempt=`), Badge (`?badge=`, token number). Result: score, attempt hash vs recomputed, leaf, batch id, on-chain root, proof list, match. Badge: holder, our vs on-chain hashes, issued at, evidence attempts (each links to its Result check), match, red Revoked banner. Question: "Co-signed by 0x… (educator)" row and a red "Document revoked" banner. Null chain values keep the offline badge.
+  - Quiz results: "Verify my result" button (`/verify?attempt=<id>`; 409 text explains it is not anchored yet).
+- **How to run:** `./scripts/dev.sh db`, `./scripts/dev.sh api`, `./scripts/dev.sh web`; make an account an educator with `cd api && PYTHONUTF8=1 .venv/bin/python scripts/make_educator.py <email>` (log in again or reload so the header shows Educator).
+- **Test result:** `npm run build` OK (the Next 16.4.4 security notice stopped the first run again; the rerun built all 15 routes), `npm run lint` clean. pytest **358 passed**, 15 chain skips without a Hardhat node (4 new: the 2 endpoints in the 403 list, results counts, badges list). Read-only dev-DB check: every new endpoint matches `lib/types.ts`; live Amoy `/verify/attempt` and `/verify/badge/{token}` return match = true; a learner gets 403 on `/educator/results`.
+- **Open issues:**
+  - The educator page reads the role once per page load; after `make_educator.py` the user must reload.
+  - The co-sign tx link in the documents list is built from the document's explorer URL (the list has no explorer_url for the co-sign tx); right after co-signing the API's own link is used.
+  - Next.js 16.4.4 security advisory on build: upgrading Next is a separate team decision (unchanged from R09).
+  - No commits made: Deepesh commits and pushes.

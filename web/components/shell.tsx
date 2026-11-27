@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { getToken, setToken } from "@/lib/api";
-import { useToken } from "@/lib/use-load";
+import { useMe, useToken } from "@/lib/use-load";
 
 /** Redirects to /login when there is no token. Returns true once a token is known to exist. */
 export function useRequireAuth(): boolean {
@@ -22,8 +22,11 @@ export function useRequireAuth(): boolean {
   return checked && token !== null;
 }
 
+const NAV = "rounded-md px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white";
+
 export function Header({ authed = true }: { authed?: boolean }) {
   const router = useRouter();
+  const { data: me } = useMe();
   const logout = () => {
     setToken(null);
     router.push("/login");
@@ -34,14 +37,22 @@ export function Header({ authed = true }: { authed?: boolean }) {
         <Link href="/" className="font-display text-lg font-semibold tracking-tight">
           Smart<span className="text-accent">Quiz</span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex flex-wrap items-center justify-end gap-1 text-sm">
           <Link href="/verify" className="rounded-md px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">
             Verify
           </Link>
           {authed && (
             <>
-              <Link href="/" className="rounded-md px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">
+              <Link href="/" className={NAV}>
                 Documents
+              </Link>
+              {me?.role === "educator" && (
+                <Link href="/educator" className={NAV}>
+                  Educator
+                </Link>
+              )}
+              <Link href="/profile" className={NAV}>
+                Profile
               </Link>
               <button onClick={logout} className="rounded-md px-3 py-2 text-white/80 hover:bg-white/10 hover:text-white">
                 Log out

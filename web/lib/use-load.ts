@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { getToken } from "./api";
+import { getMe, getToken } from "./api";
+import type { User } from "./types";
 
 type LoadState<T> = { data: T | null; error: string | null; status: number | null; key: unknown };
 
@@ -42,4 +43,10 @@ const noopSubscribe = () => () => {};
 /** The stored token, or null on the server and before hydration. */
 export function useToken(): string | null {
   return useSyncExternalStore(noopSubscribe, getToken, () => null);
+}
+
+/** The logged-in user (role, wallet), or null when logged out. Reloads when the token changes. */
+export function useMe() {
+  const token = useToken();
+  return useLoad<User | null>(() => (token ? getMe() : Promise.resolve(null)), token);
 }

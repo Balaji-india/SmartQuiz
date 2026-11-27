@@ -471,6 +471,15 @@ function Results({ quiz, result, onRefresh }: { quiz: QuizOut; result: AttemptRe
           <Link href={`/verify?quiz=${quiz.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:border-white">
             Verify this quiz
           </Link>
+          {(result?.attempt_id ?? quiz.attempt_id) && (
+            <Link
+              href={`/verify?attempt=${result?.attempt_id ?? quiz.attempt_id}`}
+              title="Checkable once an educator anchors results (or you claim a badge)"
+              className="inline-flex min-h-11 items-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:border-white"
+            >
+              Verify my result
+            </Link>
+          )}
           <Link href={`/documents/${quiz.document_id}`} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-white/75 hover:text-white">
             Back to textbook
           </Link>
