@@ -48,6 +48,7 @@ export type QuizOut = {
   id: string;
   document_id: string;
   status: "generating" | "ready" | "failed";
+  mode: QuizMode;
   time_limit_sec: number;
   quiz_hash: string | null;
   commit_tx: string | null;
@@ -136,6 +137,11 @@ export type RevisionNote = {
 };
 
 export type RevisionOut = { notes: RevisionNote[] }; // latest note per concept, weakest first
+
+// SPEC 9.6: FSRS review mode
+export type QuizMode = "practice" | "review";
+export type ReviewSummaryOut = { due_now: number; next_due: string | null; cards: number };
+export type NothingDueOut = { detail: "Nothing due for review"; next_due: string | null }; // POST /quizzes 409 in review mode
 
 export type VerifiedFact = {
   idx: number;

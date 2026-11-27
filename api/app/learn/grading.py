@@ -1,5 +1,5 @@
 """The one "on final grade" hook (SPEC 9.4). Every graded answer goes through here, in the caller's transaction:
-fact coverage (target fact only) and mastery now; FSRS cards (R05) and short-answer grades (R06) plug in here."""
+fact coverage (target fact only), mastery, and the FSRS review card (R05); short-answer grades (R06) plug in here."""
 import uuid
 from datetime import datetime
 
@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.learn.mastery import update_mastery
+from app.learn.review import update_card
 from app.models import Fact, FactCoverage
 
 
@@ -37,3 +38,4 @@ def on_final_grade(
         )
     )
     update_mastery(db, user_id, target.document_id, target.concept, grade, qtype, now)
+    update_card(db, user_id, target, grade, now)

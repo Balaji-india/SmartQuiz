@@ -10,6 +10,7 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,7 +25,7 @@ from app.models import Fact, GenerationLog, Question, Quiz
 from app.quiz import gates
 from app.quiz.dedup import DuplicateChecker, fingerprint
 from app.quiz.generate import Candidate, generate
-from app.quiz.select import Target, context_facts, select_targets
+from app.quiz.select import Target, context_facts, select_review_targets, select_targets
 
 log = logging.getLogger(__name__)
 
@@ -132,7 +133,14 @@ class _Run:
 
     def build(self) -> list[Question]:
         quiz_id = self.quiz.id
-        targets = select_targets(self.db, self.quiz.user_id, self.quiz.document_id, self.n + spare_count(self.n), str(quiz_id))
+        review = self.quiz.mode == "review"
+        want = self.n + spare_count(self.n)
+        if review:  # SPEC 9.6: due cards only; spares are simply more due cards, if any
+            targets = select_review_targets(
+                self.db, self.quiz.user_id, self.quiz.document_id, want, datetime.now(timezone.utc)
+            )
+        else:
+            targets = select_targets(self.db, self.quiz.user_id, self.quiz.document_id, want, str(quiz_id))
         if not targets:
             return []
         contexts = {t.fact.idx: context_facts(self.db, self.quiz.document_id, t.fact) for t in targets}
@@ -158,7 +166,9 @@ class _Run:
         if passed:
             gates.gate4_dependence(passed)
         vectors = embed_texts([c.stem for c in passed]) if passed else []
-        dup = DuplicateChecker(self.db, self.quiz.user_id, self.quiz.document_id, exclude_quiz=quiz_id)
+        dup = DuplicateChecker(
+            self.db, self.quiz.user_id, self.quiz.document_id, exclude_quiz=quiz_id, within_quiz_only=review
+        )
         questions: list[Question] = []
         for c, vector in zip(passed, vectors):
             g4 = c.gate_results["gate4"]

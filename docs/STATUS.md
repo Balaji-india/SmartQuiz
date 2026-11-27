@@ -434,3 +434,64 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - A note with 0 sentences kept is still stored and becomes the "latest" for its concept on GET, replacing an earlier good note.
   - Notes are generated synchronously in the request, which takes about 3 s on Groq. There is no progress state.
   - No commits made: Deepesh commits and pushes.
+
+### R05 — FSRS review cards and review quiz mode (2026-11-27, Fedora)
+- **Done:**
+  - `fsrs==6.3.3` pinned in `api/requirements.txt` (no dependencies).
+  - Migration `0006_review_cards`:
+    - table `review_cards` (user_id, fact_id, card jsonb, due, last_rating), pk (user_id, fact_id), index (user_id, due);
+    - `quizzes.mode`, default `practice`.
+    - Models `ReviewCard` and `Quiz.mode`.
+  - `app/learn/review.py`:
+    - rating map wrong → Again, partial → Hard, correct → Good;
+    - `update_card` locks the row, rebuilds the card with `Card.from_dict` (or `Card(card_id=fact.id)`), runs the default `Scheduler`, and upserts `to_dict()`, `due` and `last_rating`;
+    - `review_summary` and `due_cards`.
+  - The "on final grade" hook (`learn/grading.py`) now also updates the card, in the same transaction as coverage and mastery.
+  - `quiz/select.py`: new `select_review_targets` (due cards only, most overdue first, max 2 per concept, Bloom ladder from coverage). `select_targets` (practice) is unchanged.
+  - `quiz/job.py`: review mode uses the review selector. Its spares are only more due cards. `DuplicateChecker(within_quiz_only=True)` checks fingerprints only within the new quiz and skips the stem cosine check. Gates 1–4 and the on-chain commit run as usual.
+  - `POST /quizzes`:
+    - `mode: "practice" | "review"`;
+    - in review mode with nothing due: 409 `{"detail":"Nothing due for review","next_due":…}`, sent before any quiz row or LLM call;
+    - `QuizOut.mode`.
+  - `GET /documents/{id}/review -> {"due_now","next_due","cards"}` (owner only).
+  - `scripts/backfill_mastery.py` also rebuilds review cards, replaying each attempt at its `created_at`, and prints card counts.
+  - `web/lib/types.ts`: `QuizMode`, `QuizOut.mode`, `ReviewSummaryOut`, `NothingDueOut`.
+  - SPEC 9.6 has a new details paragraph.
+- **How to run:**
+  - `cd api && PYTHONUTF8=1 .venv/bin/python -m alembic upgrade head` (the dev DB is at 0006)
+  - `PYTHONUTF8=1 .venv/bin/python scripts/backfill_mastery.py`
+  - `POST /quizzes {"document_id", "num_questions", "mode": "review"}`
+  - `GET /documents/{id}/review`
+  - Tests: `./scripts/dev.sh test`
+- **Test results:**
+  - pytest **315 passed**, with a local Hardhat node. The 15 new tests are in `tests/test_review.py`:
+    - the rating mapping, and an unknown grade is rejected;
+    - a card is created, then updated from its stored dict;
+    - a submit makes one card per target, and the wrong ones come due first;
+    - due ordering and the per-concept cap, including case-insensitive concept names;
+    - Bloom ladder targets;
+    - other users and documents are ignored;
+    - the 409 shape, both with and without `next_due`, with no quiz row and no generator call;
+    - `mode` is validated and defaults to practice;
+    - a review quiz targets ⊆ due facts, passes all 4 gates, commits on a FAKE chain with `CHAIN_OPTIONAL=false`, and its hash matches;
+    - after the review is answered, nothing is due;
+    - practice selection is unchanged when cards exist;
+    - within-quiz-only duplicate behaviour;
+    - the GET summary is owner only;
+    - the backfill rebuilds the same cards and is idempotent.
+  - `test_mastery.py`: the backfill stats assertion now ignores the new `cards` key. All existing selection tests pass unchanged.
+  - Web: `tsc --noEmit` and `npm run lint` are clean.
+- **Stats:**
+  - **Backfill on the dev DB:** 11 attempts and 71 answers give 58 cards. 55 are due now, because those attempts are days old. The next one is due 2026-11-27T15:00Z.
+  - **One-quiz scenario (FAKE LLM, test DB):** a 10-question quiz with 4 wrong answers.
+    - Right after submit: `due_now` 0, `next_due` +1 min, 10 cards.
+    - 2 min later: `due_now` 4, `next_due` 05:01:33Z (the cards answered right, due at +10 min).
+    - Wrong targets [4, 9, 12, 19] = due [4, 9, 12, 19] = review quiz targets. Targets ⊆ due: true.
+    - Bloom levels went remember → understand (at the floor, the neighbouring level) and understand → remember.
+    - Quiz status: ready.
+- **Open issues:**
+  - Default learning steps: a correct answer comes due again after 10 min. Demo step 9 ("only the facts answered wrong come back") must start the review quiz between 1 and 10 min after the attempt. After that, the facts answered right come back too.
+  - The backfilled dev cards are mostly overdue, because old attempts were replayed at their real times. The dev pairs therefore show many due cards. The demo is re-seeded in R11 anyway.
+  - The 409 check counts due cards before the job runs. If a card stops being due in between (another submit), the job can find 0 targets, and the quiz then fails as in practice mode.
+  - No web screen yet: the review queue page comes in R09.
+  - No commits made: Deepesh commits and pushes.

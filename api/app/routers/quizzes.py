@@ -2,8 +2,10 @@
 fact_idxs only after the attempt is submitted (CLAUDE.md rule 7)."""
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +15,7 @@ from app.chain.service import explorer_url
 from app.config import get_settings
 from app.db import get_db
 from app.learn.grading import on_final_grade
+from app.learn.review import review_summary
 from app.models import Attempt, Document, Fact, GenerationLog, Question, Quiz, Section, User
 from app.quiz.job import get_progress, run_quiz_job
 
@@ -25,6 +28,7 @@ class QuizCreate(BaseModel):
     document_id: uuid.UUID
     num_questions: int = Field(10, ge=1, le=20)
     time_limit_sec: int = Field(600, ge=60, le=7200)
+    mode: Literal["practice", "review"] = "practice"  # SPEC 9.6
 
 
 class QuestionOut(BaseModel):
@@ -47,6 +51,7 @@ class QuizOut(BaseModel):
     id: uuid.UUID
     document_id: uuid.UUID
     status: str
+    mode: str
     time_limit_sec: int
     quiz_hash: str | None
     commit_tx: str | None
@@ -161,6 +166,7 @@ def quiz_out(db: Session, quiz: Quiz) -> QuizOut:
         id=quiz.id,
         document_id=quiz.document_id,
         status=quiz.status,
+        mode=quiz.mode,
         time_limit_sec=quiz.time_limit_sec,
         quiz_hash=quiz.quiz_hash if quiz.status == "ready" else None,
         commit_tx=quiz.commit_tx,
@@ -256,7 +262,14 @@ def create_quiz(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
     if document.status != "ready":
         raise HTTPException(status.HTTP_409_CONFLICT, "Document is not ready")
-    quiz = Quiz(user_id=user.id, document_id=document.id, time_limit_sec=body.time_limit_sec)
+    if body.mode == "review":
+        summary = review_summary(db, user.id, document.id, datetime.now(timezone.utc))
+        if summary.due_now == 0:  # SPEC 9.6: no quiz row, no LLM call
+            next_due = summary.next_due.isoformat() if summary.next_due else None
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT, content={"detail": "Nothing due for review", "next_due": next_due}
+            )
+    quiz = Quiz(user_id=user.id, document_id=document.id, time_limit_sec=body.time_limit_sec, mode=body.mode)
     db.add(quiz)
     db.commit()
     session_factory = sessionmaker(bind=db.get_bind(), autoflush=False, expire_on_commit=False)

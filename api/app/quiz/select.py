@@ -8,6 +8,8 @@ Tiers, for this user + document:
 Spread across sections in proportion to their fact counts; at most 2 targets per concept.
 Only the target fact counts as used; context facts in fact_idxs do not.
 Retests climb Bloom's ladder (SPEC 9.3): up after a right answer, down after a wrong one.
+
+Review mode (SPEC 9.6) is a separate selector, select_review_targets: only FSRS cards that are due.
 """
 import random
 import uuid
@@ -18,9 +20,11 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.learn.review import due_cards
 from app.models import Fact, FactCoverage, Question, Quiz
 
 MAX_PER_CONCEPT = 2
+REVIEW_TIER = 5  # Target.tier for review-mode targets
 BLOOM_LEVELS = ("remember", "understand", "apply", "analyze")
 
 
@@ -147,6 +151,33 @@ def select_targets(db: Session, user_id: uuid.UUID, document_id: uuid.UUID, n: i
             row = coverage.get(fact.id)
             previous = row.last_bloom if row else used_bloom.get(fact.idx)
             targets.append(Target(fact, tier, next_bloom(previous, row.last_correct if row else None), previous))
+    return targets
+
+
+def select_review_targets(
+    db: Session, user_id: uuid.UUID, document_id: uuid.UUID, n: int, now: datetime
+) -> list[Target]:
+    """SPEC 9.6: up to n due cards, most overdue first, at most 2 per concept, Bloom ladder from the last answer.
+    Fewer due than n gives fewer targets; none due gives []."""
+    due = [fact for fact, _card in due_cards(db, user_id, document_id, now)]
+    coverage = {
+        row.fact_id: row
+        for row in db.scalars(
+            select(FactCoverage).where(FactCoverage.user_id == user_id, FactCoverage.fact_id.in_([f.id for f in due]))
+        )
+    }
+    concepts: Counter = Counter()
+    targets: list[Target] = []
+    for fact in due:
+        if len(targets) >= n:
+            break
+        key = fact.concept.strip().lower()
+        if concepts[key] >= MAX_PER_CONCEPT:
+            continue
+        concepts[key] += 1
+        row = coverage.get(fact.id)  # a card always has coverage (same hook); guard anyway
+        previous = row.last_bloom if row else None
+        targets.append(Target(fact, REVIEW_TIER, next_bloom(previous, row.last_correct if row else None), previous))
     return targets
 
 

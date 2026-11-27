@@ -159,5 +159,5 @@ def test_backfill_matches_live_updates_and_is_idempotent(client, test_engine):
         with Session(test_engine) as db:
             stats = backfill(db)
             db.commit()
-        assert stats == {"attempts": 3, "answers": 30, "pairs": 1}
+        assert {k: stats[k] for k in ("attempts", "answers", "pairs")} == {"attempts": 3, "answers": 30, "pairs": 1}
         assert _rows(test_engine) == live

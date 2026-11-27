@@ -1,6 +1,6 @@
-"""Gap report (SPEC 9.4) and revision notes (SPEC 9.5). Owner only."""
+"""Gap report (SPEC 9.4), revision notes (SPEC 9.5) and the review summary (SPEC 9.6). Owner only."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.db import get_db
 from app.learn import revision
+from app.learn.review import review_summary
 from app.learn.mastery import P_INIT, concept_key, mastery_status
 from app.llm import provider
 from app.models import Fact, Mastery, RevisionNote, Section, User
@@ -143,3 +144,17 @@ def post_revision(
 def get_revision(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> RevisionOut:
     document = _own_document(document_id, db, user)
     return _revision_out(db, user.id, document.id, revision.latest_notes(db, user.id, document.id))
+
+
+# ---- FSRS review summary (SPEC 9.6) ----
+class ReviewSummaryOut(BaseModel):
+    due_now: int
+    next_due: datetime | None
+    cards: int
+
+
+@router.get("/{document_id}/review", response_model=ReviewSummaryOut)
+def get_review(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> ReviewSummaryOut:
+    document = _own_document(document_id, db, user)
+    s = review_summary(db, user.id, document.id, datetime.now(timezone.utc))
+    return ReviewSummaryOut(due_now=s.due_now, next_due=s.next_due, cards=s.cards)

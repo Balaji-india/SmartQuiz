@@ -2,6 +2,9 @@
 
 The cosine check skips earlier questions with the same target fact at a different Bloom level: those are the
 planned retests (SPEC 9.3), they naturally ask about the same thing, and their fingerprint already differs.
+
+Review mode (SPEC 9.6) uses within_quiz_only=True: fingerprints are checked only against the new quiz's own
+questions, and the stem cosine check is skipped (repeats across reviews are expected).
 """
 import hashlib
 import uuid
@@ -24,7 +27,15 @@ def fingerprint(fact_idxs: list[int], bloom_level: str) -> str:
 class DuplicateChecker:
     """Holds earlier questions of this user + document (non-failed quizzes) plus those accepted so far."""
 
-    def __init__(self, db: Session, user_id: uuid.UUID, document_id: uuid.UUID, exclude_quiz: uuid.UUID | None = None):
+    def __init__(
+        self,
+        db: Session,
+        user_id: uuid.UUID,
+        document_id: uuid.UUID,
+        exclude_quiz: uuid.UUID | None = None,
+        within_quiz_only: bool = False,
+    ):
+        self.within_quiz_only = within_quiz_only
         query = (
             select(Question.fingerprint, Question.stem_embedding, Question.target_fact_idx, Question.bloom_level)
             .join(Quiz, Quiz.id == Question.quiz_id)
@@ -32,7 +43,7 @@ class DuplicateChecker:
         )
         if exclude_quiz is not None:
             query = query.where(Quiz.id != exclude_quiz)
-        rows = db.execute(query).all()
+        rows = [] if within_quiz_only else db.execute(query).all()
         self.fingerprints: set[str] = {r.fingerprint for r in rows}
         self.vectors: list[np.ndarray] = [np.asarray(r.stem_embedding, dtype=np.float32) for r in rows]
         # (target_fact_idx, bloom_level) per vector, same order.
@@ -45,6 +56,8 @@ class DuplicateChecker:
         With target_idx and bloom_level, earlier stems of that target at another level (retests) are not compared."""
         if fp in self.fingerprints:
             return "dup_fingerprint", "same facts and bloom level as an earlier question"
+        if self.within_quiz_only:
+            return None, ""
         compare = [
             v for v, (idx, level) in zip(self.vectors, self.keys)
             if target_idx is None or idx != target_idx or level == bloom_level

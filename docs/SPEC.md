@@ -318,6 +318,12 @@ GET /documents/{id}/review -> {"due_now":4,"next_due":"iso|null","cards":37}
 Practice selection (section 4, CLAUDE.md rule 4) is unchanged. In review mode the fingerprint check (section 4) runs only
 within the new quiz, not against earlier quizzes: a fact reviewed many times runs out of the 4 Bloom levels, and a
 repeat question is expected there. The stem-embedding backup check is skipped in review mode for the same reason.
+Details (R05): `fsrs==6.3.3`, default `Scheduler()` (learning steps 1 min and 10 min, fuzzing on). A new card is due
+after 1 min on `Again`, 5.5 min on `Hard`, 10 min on `Good`. `Card(card_id=facts.id)`. A null (skipped) MCQ answer is
+`wrong`. The 409 comes before any quiz row or LLM call. The Bloom level of a review target is `next_bloom(last_bloom,
+last_correct)` from `fact_coverage` (SPEC 9.3). Spares in review mode are only further due cards. `QuizOut` adds
+`"mode"`. `api/scripts/backfill_mastery.py` also deletes and replays the review cards of each user + document, at
+each attempt's `created_at`.
 
 ### 9.7 R06 — Open-ended (short-answer) questions
 DB: `questions.qtype` (`mcq`/`short`, default `mcq`), `questions.model_answer text null`, `questions.dependence_score`
