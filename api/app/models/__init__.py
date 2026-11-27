@@ -1,4 +1,5 @@
 from app.models.tables import (
+    AnswerGrade,
     Attempt,
     Base,
     Document,
@@ -15,6 +16,7 @@ from app.models.tables import (
 )
 
 __all__ = [
+    "AnswerGrade",
     "Attempt",
     "Base",
     "Document",

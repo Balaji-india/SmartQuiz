@@ -1,4 +1,4 @@
-"""Gates 1, 2, 3 and 4 (SPEC sections 4 and 9.2). Checker model only; one batched call per gate, items keyed by id.
+"""Gates 1, 2, 3 and 4 (SPEC sections 4 and 9.2), and Gate 3s for short answers (SPEC 9.7). Checker model only; one batched call per gate, items keyed by id.
 
 Results go into gate_results with integers only, so the quiz hash is stable. Missing verdicts are
 retried once (attempt=1), then fail closed (gates 1, 2 and 3) or count as a blind miss (gate 4).
@@ -16,6 +16,7 @@ from app.quiz.prompts import (
     GATE_DEPENDENCE_SYSTEM,
     GATE_DISTRACTORS_SYSTEM,
     GATE_GROUNDING_SYSTEM,
+    GATE_SHORT_SOLVABILITY_SYSTEM,
     GATE_SOLVABILITY_SYSTEM,
 )
 
@@ -79,7 +80,7 @@ def gate1_grounding(candidates: list[Candidate], fact_text: dict[int, str]) -> N
             "id": i,
             "facts": [fact_text[idx] for idx in c.fact_idxs],
             "stem": c.stem,
-            "answer": c.options[c.answer_index],
+            "answer": c.answer_text,  # the model answer for a short question
         }
         for i, c in enumerate(candidates)
     ]
@@ -156,6 +157,24 @@ def gate3_solvability(candidates: list[Candidate], fact_text: dict[int, str]) ->
         }
 
 
+def gate3_short(candidates: list[Candidate], fact_text: dict[int, str]) -> None:
+    """Gate 3s (SPEC 9.7): facts + stem + model answer → ANSWERABLE / AMBIGUOUS. Missing or unknown fails closed.
+    Stored as gate_results["gate3"] with a verdict instead of a choice."""
+    items = [
+        {"id": i, "facts": [fact_text[idx] for idx in c.fact_idxs], "stem": c.stem, "model_answer": c.model_answer}
+        for i, c in enumerate(candidates)
+    ]
+    found = _batch(GATE_SHORT_SOLVABILITY_SYSTEM, items)
+    for i, c in enumerate(candidates):
+        r = found.get(i)
+        verdict = str(r.get("verdict", "")).strip().upper() if r else ""
+        if verdict not in ("ANSWERABLE", "AMBIGUOUS"):
+            verdict, reason = "AMBIGUOUS", NO_VERDICT
+        else:
+            reason = _reason(r)
+        c.gate_results["gate3"] = {"passed": verdict == "ANSWERABLE", "verdict": verdict, "reason": reason}
+
+
 def gate4_dependence(candidates: list[Candidate]) -> None:
     """Blind: stem + options only. Always passes; the score says how much the question needs the document."""
     orders = [_shuffle(c, "gate4") for c in candidates]
@@ -182,7 +201,8 @@ def passed_gate1(c: Candidate) -> bool:
 
 
 def passed_gate2(c: Candidate) -> bool:
-    return bool(c.gate_results.get("gate2", {}).get("passed"))
+    """Short answers have no distractors, so no Gate 2."""
+    return c.qtype == "short" or bool(c.gate_results.get("gate2", {}).get("passed"))
 
 
 def passed_gate3(c: Candidate) -> bool:

@@ -1,6 +1,7 @@
 """Rebuild the mastery table (SPEC 9.4) and the FSRS review cards (SPEC 9.6) by replaying every submitted attempt
 in order, each at its attempt's created_at. Idempotent: each (user, document) with attempts has its mastery rows and
 review cards deleted and recomputed in one transaction. Coverage is not touched.
+Short answers (SPEC 9.7) replay their final verdict from answer_grades; one still waiting for an educator is skipped.
 
 Usage: cd api && PYTHONUTF8=1 .venv/bin/python scripts/backfill_mastery.py
 """
@@ -15,7 +16,8 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.learn.mastery import update_mastery  # noqa: E402
 from app.learn.review import review_summary, update_card  # noqa: E402
-from app.models import Attempt, Fact, Mastery, Question, Quiz, ReviewCard  # noqa: E402
+from app.learn.shortgrade import HOOK_GRADE  # noqa: E402
+from app.models import AnswerGrade, Attempt, Fact, Mastery, Question, Quiz, ReviewCard  # noqa: E402
 
 WEAKEST = 5
 
@@ -43,11 +45,18 @@ def backfill(db: Session) -> dict:
                 select(Fact).where(Fact.document_id == doc, Fact.idx.in_([q.target_fact_idx for q in questions]))
             )
         }
+        grades = {g.question_id: g for g in db.scalars(select(AnswerGrade).where(AnswerGrade.attempt_id == attempt.id))}
         when = attempt.created_at or datetime.now(timezone.utc)
         for q, chosen in zip(questions, attempt.answers):
-            grade = "correct" if chosen == q.answer_index else "wrong"
+            if q.qtype == "short":
+                verdict = grades[q.id].final_verdict if q.id in grades else None
+                if verdict is None:
+                    continue  # pending educator review: not a final grade yet
+                grade = HOOK_GRADE[verdict]
+            else:
+                grade = "correct" if chosen == q.answer_index else "wrong"
             target = facts[q.target_fact_idx]
-            update_mastery(db, attempt.user_id, doc, target.concept, grade, "mcq", when)
+            update_mastery(db, attempt.user_id, doc, target.concept, grade, q.qtype, when)
             update_card(db, attempt.user_id, target, grade, when)
             answers += 1
     db.flush()

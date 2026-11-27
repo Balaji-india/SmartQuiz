@@ -126,9 +126,11 @@ class Question(Base):
     fingerprint: Mapped[str] = mapped_column(String, nullable=False, index=True)
     gate_results: Mapped[dict] = mapped_column(JSONB, nullable=False)
     distractors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
-    dependence_score: Mapped[float] = mapped_column(Float, nullable=False)
+    dependence_score: Mapped[float | None] = mapped_column(Float)  # null for short answers (no Gate 4)
     flagged_general: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     stem_embedding = mapped_column(Vector(EMBEDDING_DIM), nullable=False)
+    qtype: Mapped[str] = mapped_column(String(8), nullable=False, default="mcq", server_default="mcq")  # mcq / short
+    model_answer: Mapped[str | None] = mapped_column(Text)  # short answers only (SPEC 9.7)
 
 
 class Attempt(Base):
@@ -141,7 +143,41 @@ class Attempt(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     total: Mapped[int] = mapped_column(Integer, nullable=False)
     time_taken_sec: Mapped[int] = mapped_column(Integer, nullable=False)
+    # final / pending_review (a short answer waits for an educator, SPEC 9.7)
+    grading_status: Mapped[str] = mapped_column(String(16), nullable=False, default="final", server_default="final")
     created_at: Mapped[datetime] = _created_at()
+
+
+class AnswerGrade(Base):
+    """One short-answer grade (SPEC 9.7). verdict / confidence come from the checker (null when it gave none);
+    deferred grades wait for educator_verdict. The final verdict is educator_verdict when set, else verdict."""
+
+    __tablename__ = "answer_grades"
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "question_id", name="uq_answer_grades_attempt_question"),
+        Index("ix_answer_grades_pending", "deferred", "educator_verdict"),  # the R08 educator queue
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    attempt_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("attempts.id"), nullable=False)
+    question_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("questions.id"), nullable=False)
+    answer_text: Mapped[str | None] = mapped_column(Text)
+    verdict: Mapped[str | None] = mapped_column(String(16))  # correct / partial / incorrect
+    confidence: Mapped[int | None] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(Text)
+    fact_idxs: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False, default=list, server_default="{}")
+    deferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    educator_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    educator_verdict: Mapped[str | None] = mapped_column(String(16))
+    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+    @property
+    def final_verdict(self) -> str | None:
+        """None while the grade waits for an educator."""
+        if self.educator_verdict:
+            return self.educator_verdict
+        return None if self.deferred else self.verdict
 
 
 class FactCoverage(Base):

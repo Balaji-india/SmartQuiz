@@ -3,13 +3,14 @@
 Request budget per quiz: ONE generator call (attempt 0) for all targets plus spares, then at most ONE
 batched regeneration (attempt 1) shared by every target that failed validation, Gate 1, 2 or 3.
 Checker calls: one batch per gate per round, plus one gate-4 batch.
+Short answers (SPEC 9.7) ride in the same generator calls; they run Gate 1 and Gate 3s, never Gate 2 or 4.
 """
 import logging
 import math
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from sqlalchemy import select, update
@@ -68,11 +69,19 @@ def spare_count(n: int) -> int:
     return max(MIN_SPARE, math.ceil(n * SPARE_SHARE))
 
 
+def mark_short(targets: list[Target], n: int, num_short: int) -> list[Target]:
+    """num_short of the first n targets become short answers, spread evenly; spares stay MCQ."""
+    first = min(n, len(targets))
+    k = min(num_short, first)
+    picks = {math.floor((j + 0.5) * first / k) for j in range(k)} if k else set()
+    return [replace(t, qtype="short") if i in picks else t for i, t in enumerate(targets)]
+
+
 class _Run:
     """One quiz's generation, with its logging."""
 
-    def __init__(self, db: Session, quiz: Quiz, n: int):
-        self.db, self.quiz, self.n = db, quiz, n
+    def __init__(self, db: Session, quiz: Quiz, n: int, num_short: int = 0):
+        self.db, self.quiz, self.n, self.num_short = db, quiz, n, num_short
         self.same_family = same_family_checker()
         facts = db.scalars(select(Fact).where(Fact.document_id == quiz.document_id)).all()
         self.fact_text = {f.idx: f.text for f in facts}
@@ -95,7 +104,7 @@ class _Run:
         _bump(self.quiz.id, "rejected")
 
     def verify(self, candidates: list[Candidate]) -> list[Candidate]:
-        """Validation, then Gates 1, 2 and 3 in parallel. Returns the candidates that passed all three."""
+        """Validation, then Gates 1, 2 and 3 in parallel (short answers: Gate 1 and Gate 3s). Returns the passed ones."""
         valid = []
         for c in candidates:
             if c.error:
@@ -105,28 +114,32 @@ class _Run:
                 valid.append(c)
         if not valid:
             return []
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            jobs = [
-                pool.submit(gates.gate1_grounding, valid, self.fact_text),
-                pool.submit(gates.gate2_distractors, valid, self.fact_text),
-                pool.submit(gates.gate3_solvability, valid, self.fact_text),
-            ]
-            for job in jobs:
+        mcq = [c for c in valid if c.qtype == "mcq"]
+        short = [c for c in valid if c.qtype == "short"]
+        calls = [(gates.gate1_grounding, valid)]  # Gate 1 batches MCQs and short answers together
+        if mcq:
+            calls += [(gates.gate2_distractors, mcq), (gates.gate3_solvability, mcq)]
+        if short:
+            calls.append((gates.gate3_short, short))
+        with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+            for job in [pool.submit(fn, cs, self.fact_text) for fn, cs in calls]:
                 job.result()
         passed = []
         for c in valid:
-            g1, g2, g3 = c.gate_results["gate1"], c.gate_results["gate2"], c.gate_results["gate3"]
+            g1, g3 = c.gate_results["gate1"], c.gate_results["gate3"]
             self.log(c, "gate1", gates.passed_gate1(c), f"{g1['verdict']}: {g1['reason']}", checker=True)
             if g1.get("bloom") and g1["bloom"] != c.bloom_level:  # logged only, never dropped (SPEC 9.3)
                 self.log(c, "bloom_mismatch", True, f"asked {c.bloom_level}, checker says {g1['bloom']}")
-            self.log(c, "gate2", gates.passed_gate2(c), g2["reason"], checker=True)
+            if c.qtype == "mcq":
+                self.log(c, "gate2", gates.passed_gate2(c), c.gate_results["gate2"]["reason"], checker=True)
             self.log(c, "gate3", gates.passed_gate3(c), g3["reason"], checker=True)
             if not gates.passed_gate1(c):
                 self.reject(c, "gate1", g1["reason"])
             elif not gates.passed_gate2(c):
-                self.reject(c, "gate2", g2["reason"])
+                self.reject(c, "gate2", c.gate_results["gate2"]["reason"])
             elif not gates.passed_gate3(c):
-                self.reject(c, "gate3", f"checker chose option {g3['choice']}: {g3['reason']}")
+                why = f"checker said {g3['verdict']}" if c.qtype == "short" else f"checker chose option {g3['choice']}"
+                self.reject(c, "gate3", f"{why}: {g3['reason']}")
             else:
                 passed.append(c)
         return passed
@@ -143,6 +156,7 @@ class _Run:
             targets = select_targets(self.db, self.quiz.user_id, self.quiz.document_id, want, str(quiz_id))
         if not targets:
             return []
+        targets = mark_short(targets, self.n, self.num_short)
         contexts = {t.fact.idx: context_facts(self.db, self.quiz.document_id, t.fact) for t in targets}
 
         _set_progress(quiz_id, stage="generating")
@@ -151,7 +165,8 @@ class _Run:
         passed = self.verify(first)
 
         failed = [c for c in first if c.failed_gate]
-        if failed and len(passed) < self.n:
+        # Also regenerate when a short item failed, or the MCQ spares would quietly fill its place.
+        if failed and (len(passed) < self.n or any(c.qtype == "short" for c in failed)):
             # The one batched regeneration, with attempt=1 so the cache returns a new response.
             problems = {c.target_idx: f"{c.failed_gate}: {c.failed_reason}" for c in failed}
             _set_progress(quiz_id, stage="generating")
@@ -160,19 +175,22 @@ class _Run:
             passed += self.verify(retry)
 
         # Back in target order, so section spread and tier priority decide who is kept.
+        # Short items sit inside the first n targets, so they are kept whenever they passed.
         order = {t.fact.idx: i for i, t in enumerate(targets)}
         passed.sort(key=lambda c: order[c.target_idx])
 
-        if passed:
-            gates.gate4_dependence(passed)
+        mcq_passed = [c for c in passed if c.qtype == "mcq"]
+        if mcq_passed:
+            gates.gate4_dependence(mcq_passed)  # blind guessing needs options: MCQs only
         vectors = embed_texts([c.stem for c in passed]) if passed else []
         dup = DuplicateChecker(
             self.db, self.quiz.user_id, self.quiz.document_id, exclude_quiz=quiz_id, within_quiz_only=review
         )
         questions: list[Question] = []
         for c, vector in zip(passed, vectors):
-            g4 = c.gate_results["gate4"]
-            self.log(c, "gate4", True, f"blind choice {g4['choice']}, confidence {g4['confidence']}: {g4['reason']}", checker=True)
+            if c.qtype == "mcq":
+                g4 = c.gate_results["gate4"]
+                self.log(c, "gate4", True, f"blind choice {g4['choice']}, confidence {g4['confidence']}: {g4['reason']}", checker=True)
             if len(questions) >= self.n:
                 continue  # a spare that is not needed: neither accepted nor rejected
             fp = fingerprint(c.fact_idxs, c.bloom_level)
@@ -182,7 +200,7 @@ class _Run:
                 self.reject(c, dup_gate, reason)
                 continue
             dup.add(fp, vector, c.target_idx, c.bloom_level)
-            score = gates.dependence_score(c)
+            score = gates.dependence_score(c) if c.qtype == "mcq" else None
             questions.append(
                 Question(
                     quiz_id=quiz_id,
@@ -197,7 +215,9 @@ class _Run:
                     gate_results=c.gate_results,
                     distractors=c.distractors,
                     dependence_score=score,
-                    flagged_general=score < gates.FLAG_GENERAL_BELOW,
+                    flagged_general=score is not None and score < gates.FLAG_GENERAL_BELOW,
+                    qtype=c.qtype,
+                    model_answer=c.model_answer,
                     stem_embedding=vector.tolist(),
                 )
             )
@@ -221,7 +241,9 @@ def commit_quiz_onchain(db: Session, quiz: Quiz, questions: list[Question]) -> N
         log.warning("quiz %s: chain offline, commit skipped (%s)", quiz.id, exc)
 
 
-def run_quiz_job(quiz_id: uuid.UUID, n: int, session_factory: sessionmaker = SessionLocal) -> None:
+def run_quiz_job(
+    quiz_id: uuid.UUID, n: int, session_factory: sessionmaker = SessionLocal, num_short: int = 0
+) -> None:
     """The background job. quiz.status moves generating → ready or failed. Never raises."""
     _set_progress(quiz_id, target=n, stage="selecting")
     with session_factory() as db:
@@ -229,7 +251,7 @@ def run_quiz_job(quiz_id: uuid.UUID, n: int, session_factory: sessionmaker = Ses
         if quiz is None:
             return
         try:
-            run = _Run(db, quiz, n)
+            run = _Run(db, quiz, n, num_short)
             questions = run.build()
             db.add_all(questions)
             db.commit()  # keeps the gate log even if the commit below fails

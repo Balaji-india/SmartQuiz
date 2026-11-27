@@ -32,6 +32,8 @@ class MetricsOut(BaseModel):
     same_family_gate_calls: int
     bloom_levels: dict[str, int]
     bloom_mismatches: int
+    short_questions: int
+    deferred_grades: int
 
 
 @router.get("/{document_id}", response_model=MetricsOut)

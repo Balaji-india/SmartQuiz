@@ -343,6 +343,23 @@ deferred answers count only once graded. Mastery, FSRS and coverage update when 
 `AttemptResult` adds `"grading_status"` and `"pending_review":1`; a short result item has `"qtype":"short"`, `"answer_text"`,
 `"model_answer"`, `"grade":{"verdict","confidence","reason","deferred","by":"checker|educator"}`, and `chosen`/`correct_index` null.
 
+Details (R06): `num_short` ≤ `num_questions` (else 422). The `num_short` short targets are spread evenly over the first
+N targets; spares stay MCQ. A generator item for a short target carries `"qtype":"short"` (MCQ items stay unmarked).
+`model_answer` ≤ 60 words; `fact_idxs` follow the MCQ rules. Gate 3s is stored as
+`gate_results.gate3 = {"passed","verdict":"ANSWERABLE|AMBIGUOUS","reason"}` and logged as `gate3`; a short item that
+fails Gate 1 or 3s always joins the one batched regeneration (even when the MCQ spares would already fill N).
+`dependence_score` null and `flagged_general` false for short. Attempt answers are strict per position (`true` and `"1"`
+are not MCQ answers → 422). An empty or null short answer is `incorrect` (confidence 100, "No answer given") with no
+LLM call. A grade is also deferred when its `fact_idxs` are empty or not ⊆ the question's facts, or when the checker
+call fails (daily limit included): the submit never fails on grading. Hook grades: correct → `correct`, partial →
+`partial`, incorrect → `wrong` (mastery uses `qtype` `short`, guess 0.05). A short result's `grade` adds
+`"fact_idxs"` (CLAUDE.md rule 1); while pending, `grade.verdict` and `grade.by` are null and `correct` is false; after
+an educator grades it, `by` is `educator` and `deferred` stays true. `generation_log` gets one `grade_short` row per graded
+answer (candidate_id null, passed = not deferred). `MetricsOut` adds `short_questions` (accepted) and
+`deferred_grades` (answer_grades ever deferred); `avg_dependence` covers MCQs only. Internal
+`app.learn.shortgrade.apply_educator_grade(db, grade_id, verdict, educator)` finalizes one deferred grade (R08 adds
+the endpoint and role check), runs the hook, rescores the attempt, and sets `grading_status` final when none are pending.
+
 ### 9.8 R07 — `SmartQuizCredentials.sol` (second contract; the registry is unchanged)
 ```solidity
 constructor(address initialOwner, address registry)    // Ownable(owner = issuer), ERC721("SmartQuiz Concept Badge","SQB"), EIP712("SmartQuizCredentials","1")

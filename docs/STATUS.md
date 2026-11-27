@@ -495,3 +495,63 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - The 409 check counts due cards before the job runs. If a card stops being due in between (another submit), the job can find 0 targets, and the quiz then fails as in practice mode.
   - No web screen yet: the review queue page comes in R09.
   - No commits made: Deepesh commits and pushes.
+
+## R06 — Short-answer questions, checker grading, educator deferral (2026-11-27)
+- **Done:**
+  - Migration `0007_short_answers`:
+    - `questions.qtype` (default `mcq`) and `model_answer`; `dependence_score` may now be null;
+    - `attempts.grading_status` (default `final`);
+    - table `answer_grades`, unique (attempt, question), with index `ix_answer_grades_pending` for the R08 educator queue.
+  - Generation:
+    - `POST /quizzes` takes `num_short` (0–3, at most `num_questions`). `job.mark_short` spreads the short targets over the first N.
+    - Short and MCQ items still come from one generator call, plus at most one batched regeneration. A short item that fails always joins the regeneration, so MCQ spares cannot quietly take its place.
+    - Short items run Gate 1 (on the model answer) and the new Gate 3s (`ANSWERABLE`/`AMBIGUOUS`); no Gate 2 or 4.
+    - New prompts `GATE_SHORT_SOLVABILITY_SYSTEM` and `GRADE_SHORT_SYSTEM`, with FAKE replies in `provider.py`.
+  - Submit:
+    - Answers are checked strictly per position, and a wrong type gets a 422.
+    - New `app/learn/shortgrade.py` makes one batched `grade_short` checker call, retries missing ids once, and logs each grade to `generation_log`.
+    - A grade is deferred when its confidence is below 70, there is no verdict, it cites facts outside the question, or the LLM call fails. A Groq error therefore never breaks a submit.
+    - An empty short answer is `incorrect` without an LLM call.
+    - The score and the hooks (coverage, mastery, FSRS) count final grades only.
+  - Educator grading: `apply_educator_grade(db, grade_id, verdict, educator)`, ready for R08 to wire. It runs the hook, rescores the attempt, and sets it to final once nothing is pending.
+  - Outputs:
+    - `AttemptResult` and `GET /attempts` are rebuilt from `answer_grades`.
+    - `QuizOut.questions[].qtype` is new.
+    - Metrics: `short_questions`, `deferred_grades`, and `avg_dependence` over MCQs only.
+  - The backfill replays final short grades and skips pending ones.
+  - `web/lib/types.ts` and `submitAttempt` are updated. SPEC 9.7 has a new details paragraph, which adds `grade.fact_idxs`.
+- **How to run:**
+  - `cd api && PYTHONUTF8=1 .venv/bin/python -m alembic upgrade head` (the dev DB is at 0007)
+  - `POST /quizzes {"document_id", "num_questions": 4, "num_short": 2}`, then submit with strings at the short positions.
+  - Tests: `./scripts/dev.sh test`
+- **Test results:**
+  - pytest **333 passed**, with a local Hardhat node and none skipped. The 18 new tests are in `tests/test_short.py`:
+    - `mark_short` spread and `validate_short` rules;
+    - a mixed quiz uses one generator call, and short items have no Gate 2 or 4 rows;
+    - a short item failing Gate 3s joins the one regeneration;
+    - a bad `num_short` gets a 422;
+    - wrong answer types get a 422 (500 characters is still accepted);
+    - one grading call, the verdicts and the score, and `GET /attempts` returns the same body;
+    - an empty answer makes no LLM call;
+    - the threshold and citation rules, including no verdict after one retry;
+    - an LLM failure defers the grade and the submit still succeeds;
+    - a deferred grade is pending, and the hooks fire only once it is final, then again after the educator grade (plus its error cases);
+    - the backfill;
+    - hash v2 with a short question;
+    - nothing leaks before submit;
+    - metrics.
+  - All existing tests pass unchanged. Web `tsc --noEmit` and lint are clean.
+- **Stats (real Groq, dev DB doc `d56e16f5` sample.pdf, throwaway user `r06-stats-…@example.invalid`, chain stubbed offline so no Amoy tx):**
+  - **Quiz:** 4 questions, 2 of them short. 1 candidate was dropped as a `generator_error` (a distractor cited an outside fact). Both short items passed Gate 3s as ANSWERABLE.
+  - **Good answer** (Q2, a paraphrase of "VP of Business Development, worried about stock and PR") → **correct, confidence 95**, fact [132].
+  - **Vague answer** (Q3, "quite a lot of attacks every week") → **incorrect, confidence 90**, fact [241], "misses specific required number 1,168".
+  - **Deferred:** 0. Score 3 / 4, status final.
+  - **Extra probe** (graded by the checker, nothing saved): "roughly a thousand a week, maybe a bit more" → partial, confidence 95, not deferred.
+  - **Requests:** 1 generator and 5 checker for generation (Gates 1, 2, 3 and 3s, then 4), plus 1 checker for grading. The probe used 1 more checker request.
+- **Open issues:**
+  - Qwen reports confidence 90–95 even on vague or borderline answers, so with real grades the threshold of 70 almost never defers. The deferral path is tested with FAKE only. Options for R08/R11: ask the checker for a calibrated confidence, defer every `partial`, or seed one deferred grade for demo step 10.
+  - A short item that fails twice is dropped, and a spare MCQ fills its place, so the quiz can have fewer than `num_short` short questions. The count is visible in metrics as `short_questions`.
+  - The grading call runs inside the submit transaction, which holds the quiz row lock for about 1–3 s. That is fine at demo scale.
+  - No web screen yet (R09 adds the text inputs and grade display); the educator endpoints come in R08.
+  - The dev DB now holds the R06 stats user, quiz and attempt.
+  - No commits made: Deepesh commits and pushes.

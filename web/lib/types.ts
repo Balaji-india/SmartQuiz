@@ -34,9 +34,12 @@ export type SectionOut = {
 
 export type TextbookOut = { document: DocumentOut; sections: SectionOut[] };
 
+export type QuestionType = "mcq" | "short";
+
 export type QuestionOut = {
   id: string;
   position: number;
+  qtype: QuestionType; // short: options [] and the learner types an answer (SPEC 9.7)
   stem: string;
   options: string[];
   bloom_level: "remember" | "understand" | "apply" | "analyze";
@@ -71,17 +74,32 @@ export type QuizProgressOut = {
 export type SourceOut = { idx: number; text: string; page: number; section: string };
 export type MisconceptionOut = { option: number; misconception: string; sources: SourceOut[] };
 
+export type GradeOut = {
+  verdict: "correct" | "partial" | "incorrect" | null; // null while it waits for an educator
+  confidence: number | null;
+  reason: string;
+  deferred: boolean;
+  by: "checker" | "educator" | null;
+  fact_idxs: number[];
+};
+
 export type AttemptResult = {
   attempt_id: string;
-  score: number;
+  score: number; // final grades only
   total: number;
+  grading_status: "final" | "pending_review";
+  pending_review: number;
   results: {
     question_id: string;
-    chosen: number | null;
-    correct_index: number;
+    qtype: QuestionType;
+    chosen: number | null; // null for a short answer
+    correct_index: number | null; // null for a short answer
     correct: boolean;
     sources: SourceOut[];
-    misconceptions: MisconceptionOut[]; // after submit only; [] for Review 1 questions
+    misconceptions: MisconceptionOut[]; // after submit only; [] for Review 1 questions and short answers
+    answer_text: string | null; // short answers only
+    model_answer: string | null;
+    grade: GradeOut | null;
   }[];
   weak_concepts: { concept: string; wrong: number; facts: number[] }[];
 };
@@ -108,6 +126,8 @@ export type MetricsOut = {
   same_family_gate_calls: number;
   bloom_levels: Record<"remember" | "understand" | "apply" | "analyze", number>;
   bloom_mismatches: number;
+  short_questions: number;
+  deferred_grades: number;
 };
 
 export type MasteryStatus = "weak" | "learning" | "untested" | "mastered";

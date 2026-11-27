@@ -99,7 +99,7 @@ export const createQuiz = (document_id: string, num_questions = 10, time_limit_s
 export const getQuiz = (id: string) => apiFetch<QuizOut>(`/quizzes/${id}`);
 export const getQuizProgress = (id: string) => apiFetch<QuizProgressOut>(`/quizzes/${id}/progress`);
 export const startQuiz = (id: string) => post<QuizOut>(`/quizzes/${id}/start`);
-export const submitAttempt = (id: string, answers: (number | null)[], time_taken_sec: number) =>
+export const submitAttempt = (id: string, answers: (number | string | null)[], time_taken_sec: number) =>
   post<AttemptResult>(`/quizzes/${id}/attempts`, { answers, time_taken_sec });
 export const getAttempt = (id: string) => apiFetch<AttemptResult>(`/attempts/${id}`);
 

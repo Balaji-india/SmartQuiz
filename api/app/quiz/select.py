@@ -34,6 +34,7 @@ class Target:
     tier: int
     bloom_level: str  # the level to ask for
     previous_bloom: str | None  # set on a retest: the level of the earlier question
+    qtype: str = "mcq"  # "short" for the num_short targets (SPEC 9.7), set by the job after selection
 
 
 def next_bloom(previous: str | None, last_correct: bool | None) -> str:

@@ -9,7 +9,7 @@ from collections import Counter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import GenerationLog, Question, Quiz
+from app.models import AnswerGrade, GenerationLog, Question, Quiz
 from app.quiz.select import BLOOM_LEVELS
 
 QUESTION_GATES = ("gate1", "gate2", "gate3", "generator_error")
@@ -38,7 +38,7 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
     questions = db.execute(
         select(
             Question.quiz_id, Question.target_fact_idx, Question.dependence_score, Question.flagged_general,
-            Question.bloom_level, Question.gate_results,
+            Question.bloom_level, Question.gate_results, Question.qtype,
         ).where(
             Question.quiz_id.in_(quiz_ids)
         )
@@ -51,6 +51,12 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
         quizzes_per_target.setdefault((user_of[q.quiz_id], q.target_fact_idx), set()).add(q.quiz_id)
     repeated = sum(1 for qs in quizzes_per_target.values() if len(qs) > 1)
 
+    dependence = [q.dependence_score for q in questions if q.dependence_score is not None]
+    deferred_grades = db.scalar(
+        select(func.count()).select_from(AnswerGrade).join(Question, Question.id == AnswerGrade.question_id)
+        .where(Question.quiz_id.in_(quiz_ids), AnswerGrade.deferred.is_(True))
+    ) if quiz_ids else 0
+
     return {
         "document_id": document_id,
         "candidates": candidates,
@@ -62,13 +68,17 @@ def document_metrics(db: Session, document_id: uuid.UUID) -> dict:
         ],
         "duplicates_blocked": {"fingerprint": duplicates.get("fingerprint", 0), "cosine": duplicates.get("cosine", 0)},
         "flagged_general": sum(1 for q in questions if q.flagged_general),
-        "avg_dependence": round(sum(q.dependence_score for q in questions) / len(questions), 2) if questions else None,
+        # Gate 4 runs on MCQs only, so short answers (dependence_score null) are left out (SPEC 9.7).
+        "avg_dependence": round(sum(dependence) / len(dependence), 2) if dependence else None,
         "repeat_rate_between_quizzes": round(repeated / len(quizzes_per_target), 3) if quizzes_per_target else 0.0,
         "same_family_checker_used": same_family_calls > 0,
         "same_family_gate_calls": same_family_calls,
         # Accepted questions per asked level, and how many the Gate 1 checker labelled differently (SPEC 9.3).
         "bloom_levels": {level: sum(1 for q in questions if q.bloom_level == level) for level in BLOOM_LEVELS},
         "bloom_mismatches": sum(1 for q in questions if _checker_bloom(q) not in (None, q.bloom_level)),
+        # SPEC 9.7: accepted short-answer questions, and short-answer grades ever sent to an educator.
+        "short_questions": sum(1 for q in questions if q.qtype == "short"),
+        "deferred_grades": deferred_grades,
     }
 
 

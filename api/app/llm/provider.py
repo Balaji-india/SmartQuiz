@@ -38,6 +38,8 @@ TASK_GATE_DEPENDENCE = "[task:gate_dependence]"
 TASK_CHAT_ANSWER = "[task:chat_answer]"
 TASK_GENERATE_REVISION = "[task:generate_revision]"
 TASK_GATE_REVISION = "[task:gate_revision]"
+TASK_GATE_SHORT_SOLVABILITY = "[task:gate_short_solvability]"
+TASK_GRADE_SHORT = "[task:grade_short]"
 
 
 _DAILY_LIMIT = re.compile(r"per[ _-]?day|\b[tr]pd\b|\bdaily\b", re.IGNORECASE)
@@ -331,6 +333,19 @@ def _fake_generate_questions(user: str, attempt: int) -> dict:
     for item in json.loads(user)["items"]:
         target = item["target"]
         idx, answer = target["idx"], target["idx"] % 4
+        if item.get("qtype") == "short":
+            questions.append(
+                {
+                    "target_idx": idx,
+                    "qtype": "short",
+                    # Built from the fact text like the MCQ stems, so two short items are not cosine duplicates.
+                    "stem": f"In your own words: {target['text'].rstrip('.')}? (fact {idx}, try {attempt})",
+                    "model_answer": target["text"],
+                    "fact_idxs": [idx],
+                    "bloom_level": item.get("bloom_level", "remember"),
+                }
+            )
+            continue
         options = [f"Option {k} about {target['concept']} (fact {idx}, try {attempt})" for k in range(4)]
         options[answer] = target["text"]
         questions.append(
@@ -370,6 +385,25 @@ def _fake_gate(system: str, user: str) -> dict:
     return {"results": results}
 
 
+def _fake_grade_short(user: str) -> dict:
+    """Deterministic grades for tests: the model answer → correct 95; "partly …" → partial 85;
+    "unsure …" → correct with confidence 40 (deferred); anything else → incorrect 90."""
+    grades = []
+    for item in json.loads(user)["items"]:
+        answer = " ".join(str(item["answer"]).split()).lower()
+        if answer == " ".join(item["model_answer"].split()).lower():
+            verdict, confidence = "correct", 95
+        elif answer.startswith("partly"):
+            verdict, confidence = "partial", 85
+        elif answer.startswith("unsure"):
+            verdict, confidence = "correct", 40
+        else:
+            verdict, confidence = "incorrect", 90
+        idxs = [f["idx"] for f in item["facts"]]
+        grades.append({"id": item["id"], "verdict": verdict, "confidence": confidence, "fact_idxs": idxs, "reason": "fake"})
+    return {"grades": grades}
+
+
 def _fake_chat_answer(user: str) -> dict:
     facts = json.loads(user)["facts"]
     first = facts[0]
@@ -394,6 +428,10 @@ def _fake(role: str, system: str, user: str, attempt: int) -> dict:
         return _fake_check_faithfulness(user)
     if TASK_GENERATE_QUESTIONS in system:
         return _fake_generate_questions(user, attempt)
+    if TASK_GATE_SHORT_SOLVABILITY in system:
+        return {"results": [{"id": i["id"], "verdict": "ANSWERABLE", "reason": "fake"} for i in json.loads(user)["items"]]}
+    if TASK_GRADE_SHORT in system:
+        return _fake_grade_short(user)
     if any(task in system for task in (TASK_GATE_GROUNDING, TASK_GATE_DISTRACTORS, TASK_GATE_SOLVABILITY, TASK_GATE_DEPENDENCE)):
         return _fake_gate(system, user)
     if TASK_CHAT_ANSWER in system:

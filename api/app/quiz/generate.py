@@ -1,4 +1,4 @@
-"""One generator call writes the MCQs for a batch of targets; each reply item is validated (SPEC section 4)."""
+"""One generator call writes the questions (MCQ and short answer, SPEC 9.7) for a batch of targets; each reply item is validated (SPEC section 4)."""
 import json
 import random
 import uuid
@@ -11,6 +11,7 @@ from app.quiz.select import Target
 
 MAX_CONTEXT_FACTS = 2
 MAX_MISCONCEPTION_WORDS = 12
+MAX_MODEL_ANSWER_WORDS = 60
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Candidate:
     fact_idxs: list[int] = field(default_factory=list)
     bloom_level: str = ""
     distractors: list[dict] = field(default_factory=list)  # [{option, fact_idxs, misconception}], stored order
+    model_answer: str | None = None  # short answers only (SPEC 9.7)
     error: str | None = None  # set when the reply item is missing or malformed
     gate_results: dict = field(default_factory=dict)
     failed_gate: str | None = None
@@ -33,6 +35,15 @@ class Candidate:
     @property
     def target_idx(self) -> int:
         return self.target.fact.idx
+
+    @property
+    def qtype(self) -> str:
+        return self.target.qtype
+
+    @property
+    def answer_text(self) -> str:
+        """What Gate 1 checks: the correct option, or the model answer of a short question."""
+        return self.model_answer if self.qtype == "short" else self.options[self.answer_index]
 
 
 def _request(targets: list[Target], contexts: dict[int, list[Fact]], problems: dict[int, str] | None) -> str:
@@ -43,6 +54,8 @@ def _request(targets: list[Target], contexts: dict[int, list[Fact]], problems: d
             "context": [{"idx": c.idx, "text": c.text} for c in contexts.get(t.fact.idx, [])],
             "bloom_level": t.bloom_level,
         }
+        if t.qtype == "short":  # MCQ items stay unmarked, which keeps the prompt short
+            item["qtype"] = "short"
         if problems and t.fact.idx in problems:
             item["previous_problem"] = problems[t.fact.idx]
         items.append(item)
@@ -82,6 +95,44 @@ def _distractors(raw, answer: int, allowed_idxs: set[int]) -> tuple[list[dict], 
     return [entries[k] for k in sorted(entries)], None
 
 
+def _cited(idxs, target: Target, allowed_idxs: set[int]) -> tuple[list[int], str | None]:
+    if not isinstance(idxs, list) or not all(_is_int(i) for i in idxs):
+        return [], "fact_idxs must be a list of integers"
+    cited = sorted(set(idxs) | {target.fact.idx})
+    if not set(cited) <= allowed_idxs:
+        return [], "fact_idxs cites a fact outside this item"
+    if len(cited) > 1 + MAX_CONTEXT_FACTS:
+        return [], f"fact_idxs cites more than {MAX_CONTEXT_FACTS} context facts"
+    return cited, None
+
+
+def validate_short(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
+    """SPEC 9.7: a stem, a model answer (≤ 60 words) and fact_idxs from this item. Stored with options [] and
+    answer_index -1; no distractors."""
+    c = Candidate(target)
+    if not isinstance(raw, dict):
+        c.error = "no question returned for this target"
+        return c
+    stem, model_answer = raw.get("stem"), raw.get("model_answer")
+    if raw.get("qtype") not in (None, "short"):
+        c.error = "expected a short-answer item"
+    elif not isinstance(stem, str) or not stem.strip():
+        c.error = "empty stem"
+    elif not isinstance(model_answer, str) or not model_answer.strip():
+        c.error = "empty model_answer"
+    elif len(model_answer.split()) > MAX_MODEL_ANSWER_WORDS:
+        c.error = f"model_answer is over {MAX_MODEL_ANSWER_WORDS} words"
+    else:
+        c.fact_idxs, c.error = _cited(raw.get("fact_idxs"), target, allowed_idxs)
+    if c.error:
+        return c
+    c.stem = stem.strip()
+    c.model_answer = " ".join(model_answer.split())
+    c.options, c.answer_index, c.distractors = [], -1, []
+    c.bloom_level = target.bloom_level
+    return c
+
+
 def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
     """Shape rules: 4 distinct non-empty options, answer_index 0-3, fact_idxs from this item and including the target,
     and one valid distractor entry per wrong option (SPEC 9.2)."""
@@ -98,16 +149,8 @@ def validate(raw, target: Target, allowed_idxs: set[int]) -> Candidate:
         c.error = "options are not distinct"
     elif not _is_int(answer) or not 0 <= answer <= 3:
         c.error = "answer_index must be 0-3"
-    elif not isinstance(idxs, list) or not all(_is_int(i) for i in idxs):
-        c.error = "fact_idxs must be a list of integers"
     else:
-        cited = sorted(set(idxs) | {target.fact.idx})
-        if not set(cited) <= allowed_idxs:
-            c.error = "fact_idxs cites a fact outside this item"
-        elif len(cited) > 1 + MAX_CONTEXT_FACTS:
-            c.error = f"fact_idxs cites more than {MAX_CONTEXT_FACTS} context facts"
-        else:
-            c.fact_idxs = cited
+        c.fact_idxs, c.error = _cited(idxs, target, allowed_idxs)
     if not c.error:
         distractors, c.error = _distractors(raw.get("distractors"), answer, allowed_idxs)
     if c.error:
@@ -149,5 +192,6 @@ def generate(
     candidates = []
     for t in targets:
         allowed = {t.fact.idx} | {c.idx for c in contexts.get(t.fact.idx, [])}
-        candidates.append(validate(by_target.get(t.fact.idx), t, allowed))
+        check = validate_short if t.qtype == "short" else validate
+        candidates.append(check(by_target.get(t.fact.idx), t, allowed))
     return candidates

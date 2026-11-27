@@ -1,4 +1,4 @@
-"""Quizzes (SPEC section 2). answer_index and target_fact_idx never leave the server through QuizOut;
+"""Quizzes (SPEC section 2, short answers 9.7). answer_index, target_fact_idx and model_answer never leave the server through QuizOut;
 fact_idxs only after the attempt is submitted (CLAUDE.md rule 7)."""
 import uuid
 from datetime import datetime, timezone
@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt, StrictStr, model_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,7 +16,8 @@ from app.config import get_settings
 from app.db import get_db
 from app.learn.grading import on_final_grade
 from app.learn.review import review_summary
-from app.models import Attempt, Document, Fact, GenerationLog, Question, Quiz, Section, User
+from app.learn.shortgrade import HOOK_GRADE, MAX_ANSWER_CHARS, grade_attempt_shorts, score_attempt
+from app.models import AnswerGrade, Attempt, Document, Fact, GenerationLog, Question, Quiz, Section, User
 from app.quiz.job import get_progress, run_quiz_job
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
@@ -29,11 +30,19 @@ class QuizCreate(BaseModel):
     num_questions: int = Field(10, ge=1, le=20)
     time_limit_sec: int = Field(600, ge=60, le=7200)
     mode: Literal["practice", "review"] = "practice"  # SPEC 9.6
+    num_short: int = Field(0, ge=0, le=3)  # SPEC 9.7: short-answer questions among num_questions
+
+    @model_validator(mode="after")
+    def _short_fits(self):
+        if self.num_short > self.num_questions:
+            raise ValueError("num_short cannot exceed num_questions")
+        return self
 
 
 class QuestionOut(BaseModel):
     id: uuid.UUID
     position: int
+    qtype: str  # mcq / short (short: options [])
     stem: str
     options: list[str]
     bloom_level: str
@@ -72,7 +81,7 @@ class QuizProgressOut(BaseModel):
 
 
 class AttemptIn(BaseModel):
-    answers: list[int | None]
+    answers: list[StrictInt | StrictStr | None]  # strict: true is not 1, "1" is not 1; int|null for an MCQ, string|null (≤ 500 chars) for a short answer
     time_taken_sec: int = Field(ge=0)
 
 
@@ -89,13 +98,28 @@ class MisconceptionOut(BaseModel):
     sources: list[SourceOut]
 
 
+class GradeOut(BaseModel):
+    """SPEC 9.7. verdict and by are null while the grade waits for an educator."""
+
+    verdict: str | None
+    confidence: int | None
+    reason: str
+    deferred: bool
+    by: Literal["checker", "educator"] | None
+    fact_idxs: list[int]
+
+
 class ResultOut(BaseModel):
     question_id: uuid.UUID
+    qtype: str = "mcq"
     chosen: int | None
-    correct_index: int
-    correct: bool
+    correct_index: int | None  # null for a short answer
+    correct: bool  # a short answer: true only once its final verdict is correct
     sources: list[SourceOut]
-    misconceptions: list[MisconceptionOut]  # SPEC 9.2: after submit only; [] for Review 1 questions
+    misconceptions: list[MisconceptionOut]  # SPEC 9.2: after submit only; [] for Review 1 questions and short answers
+    answer_text: str | None = None
+    model_answer: str | None = None
+    grade: GradeOut | None = None
 
 
 class WeakConceptOut(BaseModel):
@@ -108,6 +132,8 @@ class AttemptResult(BaseModel):
     attempt_id: uuid.UUID
     score: int
     total: int
+    grading_status: str  # final / pending_review
+    pending_review: int  # short answers waiting for an educator
     results: list[ResultOut]
     weak_concepts: list[WeakConceptOut]
 
@@ -154,6 +180,7 @@ def quiz_out(db: Session, quiz: Quiz) -> QuizOut:
             QuestionOut(
                 id=q.id,
                 position=q.position,
+                qtype=q.qtype,
                 stem=q.stem,
                 options=q.options,
                 bloom_level=q.bloom_level,
@@ -193,10 +220,28 @@ def _quiz_facts(db: Session, quiz: Quiz, questions: list[Question]) -> dict[int,
     }
 
 
+def _grade_out(g: AnswerGrade) -> GradeOut:
+    pending = g.final_verdict is None
+    return GradeOut(
+        verdict=g.final_verdict,
+        confidence=g.confidence,
+        reason=g.reason or "",
+        deferred=g.deferred,
+        by=None if pending else "educator" if g.educator_verdict else "checker",
+        fact_idxs=sorted(g.fact_idxs or []),
+    )
+
+
 def _build_result(
-    db: Session, facts: dict[int, Fact], questions: list[Question], answers: list[int | None], attempt_id: uuid.UUID
+    db: Session,
+    facts: dict[int, Fact],
+    questions: list[Question],
+    answers: list,
+    attempt_id: uuid.UUID,
+    grades: dict[uuid.UUID, AnswerGrade],
 ) -> AttemptResult:
-    """Scores answers against the stored key. Shared by submit and GET /attempts/{id}, so both return the same shape."""
+    """Scores answers against the stored key (MCQ) and the stored grades (short answers). Shared by submit and
+    GET /attempts/{id}, so both return the same shape."""
     headings = {
         s.id: s.heading
         for s in db.scalars(select(Section).where(Section.id.in_({f.section_id for f in facts.values()})))
@@ -207,40 +252,63 @@ def _build_result(
             for i in sorted(idxs)
         ]
 
-    results, score = [], 0
+    results = []
     weak: dict[str, list[int]] = {}
     for q, chosen in zip(questions, answers):
-        correct = chosen == q.answer_index
-        score += correct
-        results.append(
-            ResultOut(
-                question_id=q.id,
-                chosen=chosen,
-                correct_index=q.answer_index,
-                correct=correct,
-                sources=sources(q.fact_idxs),
-                misconceptions=[
-                    MisconceptionOut(option=d["option"], misconception=d["misconception"], sources=sources(d["fact_idxs"]))
-                    for d in q.distractors
-                ],
+        if q.qtype == "short":
+            g = grades[q.id]
+            verdict = g.final_verdict
+            correct, wrong = verdict == "correct", verdict in ("partial", "incorrect")  # pending is neither
+            results.append(
+                ResultOut(
+                    question_id=q.id, qtype="short", chosen=None, correct_index=None, correct=correct,
+                    sources=sources(q.fact_idxs), misconceptions=[], answer_text=g.answer_text,
+                    model_answer=q.model_answer, grade=_grade_out(g),
+                )
             )
-        )
-        if not correct:
+        else:
+            correct = chosen == q.answer_index
+            wrong = not correct
+            results.append(
+                ResultOut(
+                    question_id=q.id,
+                    chosen=chosen,
+                    correct_index=q.answer_index,
+                    correct=correct,
+                    sources=sources(q.fact_idxs),
+                    misconceptions=[
+                        MisconceptionOut(option=d["option"], misconception=d["misconception"], sources=sources(d["fact_idxs"]))
+                        for d in q.distractors
+                    ],
+                )
+            )
+        if wrong:
             target = facts[q.target_fact_idx]
             weak.setdefault(target.concept, []).append(target.idx)
     weak_concepts = sorted(
         (WeakConceptOut(concept=c, wrong=len(idxs), facts=sorted(idxs)) for c, idxs in weak.items()),
         key=lambda w: (-w.wrong, w.concept),
     )
+    score, pending = score_attempt(questions, answers, grades)
     return AttemptResult(
-        attempt_id=attempt_id, score=score, total=len(questions), results=results, weak_concepts=weak_concepts
+        attempt_id=attempt_id,
+        score=score,
+        total=len(questions),
+        grading_status="pending_review" if pending else "final",
+        pending_review=pending,
+        results=results,
+        weak_concepts=weak_concepts,
     )
+
+
+def _grades(db: Session, attempt_id: uuid.UUID) -> dict[uuid.UUID, AnswerGrade]:
+    return {g.question_id: g for g in db.scalars(select(AnswerGrade).where(AnswerGrade.attempt_id == attempt_id))}
 
 
 def attempt_result(db: Session, attempt: Attempt) -> AttemptResult:
     quiz = db.get(Quiz, attempt.quiz_id)
     questions = _questions(db, quiz)
-    return _build_result(db, _quiz_facts(db, quiz, questions), questions, attempt.answers, attempt.id)
+    return _build_result(db, _quiz_facts(db, quiz, questions), questions, attempt.answers, attempt.id, _grades(db, attempt.id))
 
 
 def _own_quiz(quiz_id: uuid.UUID, db: Session, user: User) -> Quiz:
@@ -273,7 +341,7 @@ def create_quiz(
     db.add(quiz)
     db.commit()
     session_factory = sessionmaker(bind=db.get_bind(), autoflush=False, expire_on_commit=False)
-    background_tasks.add_task(run_quiz_job, quiz.id, body.num_questions, session_factory)
+    background_tasks.add_task(run_quiz_job, quiz.id, body.num_questions, session_factory, body.num_short)
     return quiz_out(db, quiz)
 
 
@@ -335,16 +403,27 @@ def submit_attempt(
     questions = _questions(db, quiz)
     if len(body.answers) != len(questions):
         raise HTTPException(422, f"Expected {len(questions)} answers")
-    if any(a is not None and not 0 <= a <= 3 for a in body.answers):
-        raise HTTPException(422, "Each answer is 0-3 or null")
+    for q, a in zip(questions, body.answers):  # validated per position (SPEC 9.7)
+        if q.qtype == "short":
+            if a is not None and (not isinstance(a, str) or len(a) > MAX_ANSWER_CHARS):
+                raise HTTPException(422, f"Answer {q.position} is a short answer: a string of at most {MAX_ANSWER_CHARS} characters, or null")
+        elif a is not None and (not isinstance(a, int) or isinstance(a, bool) or not 0 <= a <= 3):
+            raise HTTPException(422, f"Answer {q.position} is multiple choice: 0-3 or null")
 
     attempt_id = uuid.uuid4()
-    facts = _quiz_facts(db, quiz, questions)
-    results = _build_result(db, facts, questions, body.answers, attempt_id)
     now = datetime.now(timezone.utc)
+    facts = _quiz_facts(db, quiz, questions)
+    # One batched checker call for every short answer; deferred grades wait for an educator.
+    grades = grade_attempt_shorts(db, quiz, questions, body.answers, facts, attempt_id, now)
+    results = _build_result(db, facts, questions, body.answers, attempt_id, grades)
     for q, r in zip(questions, results.results):
-        # MCQ grades are final at submit: coverage + mastery in this transaction.
-        on_final_grade(db, user.id, facts[q.target_fact_idx], q.bloom_level, "correct" if r.correct else "wrong", now)
+        # Only final grades update coverage, mastery and the FSRS card, in this transaction.
+        if q.qtype == "short":
+            verdict = grades[q.id].final_verdict
+            if verdict is not None:
+                on_final_grade(db, user.id, facts[q.target_fact_idx], q.bloom_level, HOOK_GRADE[verdict], now, qtype="short")
+        else:
+            on_final_grade(db, user.id, facts[q.target_fact_idx], q.bloom_level, "correct" if r.correct else "wrong", now)
 
     attempt = Attempt(
         id=attempt_id,
@@ -354,7 +433,10 @@ def submit_attempt(
         score=results.score,
         total=len(questions),
         time_taken_sec=min(body.time_taken_sec, quiz.time_limit_sec + TIME_GRACE_SEC),
+        grading_status=results.grading_status,
     )
     db.add(attempt)
+    db.flush()  # the grades reference the attempt
+    db.add_all(grades.values())
     db.commit()
     return results
