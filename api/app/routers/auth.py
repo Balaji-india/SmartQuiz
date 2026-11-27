@@ -1,7 +1,9 @@
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from eth_utils import is_checksum_address, to_checksum_address
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,6 +33,32 @@ class UserOut(BaseModel):
     id: uuid.UUID
     email: str
     name: str
+    role: str
+    wallet_address: str | None
+
+
+_ADDRESS = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
+
+class WalletIn(BaseModel):
+    wallet_address: str | None
+
+    @field_validator("wallet_address")
+    @classmethod
+    def _checksummed(cls, v: str | None) -> str | None:
+        """null clears the wallet (badges then go to the custodial address). A mixed-case address must carry a valid
+        EIP-55 checksum, so a mistyped address is refused instead of minting a badge to it."""
+        if v is None:
+            return None
+        v = v.strip()
+        if not _ADDRESS.match(v):
+            raise ValueError("wallet_address must be 0x followed by 40 hex characters")
+        body = v[2:]
+        if body != body.lower() and body != body.upper() and not is_checksum_address(v):
+            raise ValueError("wallet_address has an invalid EIP-55 checksum")
+        if int(body, 16) == 0:
+            raise ValueError("wallet_address cannot be the zero address")
+        return to_checksum_address(v)
 
 
 class AuthOut(BaseModel):
@@ -64,4 +92,12 @@ def login(body: LoginIn, db: Session = Depends(get_db)) -> AuthOut:
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)) -> User:
+    return user
+
+
+@router.put("/me/wallet", response_model=UserOut)
+def set_wallet(body: WalletIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> User:
+    """Future badges go to this address; badges already minted stay where they are (they are soulbound)."""
+    user.wallet_address = body.wallet_address
+    db.commit()
     return user

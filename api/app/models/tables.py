@@ -32,6 +32,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="learner", server_default="learner")
+    wallet_address: Mapped[str | None] = mapped_column(String(42))  # checksummed; null = custodial (SPEC 9.9)
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -51,6 +53,9 @@ class Document(Base):
     facts_unfaithful: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     register_tx: Mapped[str | None] = mapped_column(String(66))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ingesting", server_default="ingesting")
+    revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    revoke_tx: Mapped[str | None] = mapped_column(String(66))
+    revoke_reason: Mapped[str | None] = mapped_column(Text)  # off chain; only keccak256(reason) is sent
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -145,6 +150,10 @@ class Attempt(Base):
     time_taken_sec: Mapped[int] = mapped_column(Integer, nullable=False)
     # final / pending_review (a short answer waits for an educator, SPEC 9.7)
     grading_status: Mapped[str] = mapped_column(String(16), nullable=False, default="final", server_default="final")
+    # Set once grading is final (SPEC 9.9); batch_id once the hash is anchored in a result batch.
+    attempt_hash: Mapped[str | None] = mapped_column(String(66))
+    attempt_salt: Mapped[str | None] = mapped_column(String(64))
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("result_batches.id"), index=True)
     created_at: Mapped[datetime] = _created_at()
 
 
@@ -249,4 +258,55 @@ class RevisionNote(Base):
     concept: Mapped[str] = mapped_column(Text, nullable=False)
     sentences: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
     dropped: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class ResultBatch(Base):
+    """A Merkle batch of final attempt hashes anchored on SmartQuizCredentials (SPEC 9.9). batch_id = on-chain id."""
+
+    __tablename__ = "result_batches"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    batch_id: Mapped[str] = mapped_column(String(66), nullable=False, unique=True)
+    root: Mapped[str] = mapped_column(String(66), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+    anchor_tx: Mapped[str | None] = mapped_column(String(66))
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Badge(Base):
+    """A soulbound concept badge (SPEC 9.9). evidence_attempt_ids = the attempts behind evidence_hash."""
+
+    __tablename__ = "badges"
+    __table_args__ = (Index("ix_badges_user_document", "user_id", "document_id"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=False)
+    concept: Mapped[str] = mapped_column(Text, nullable=False)
+    token_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    holder_address: Mapped[str] = mapped_column(String(42), nullable=False)
+    custodial: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    concept_hash: Mapped[str] = mapped_column(String(66), nullable=False)
+    evidence_hash: Mapped[str] = mapped_column(String(66), nullable=False)
+    evidence_attempt_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, default=list, server_default="{}"
+    )
+    mint_tx: Mapped[str | None] = mapped_column(String(66))
+    revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    revoke_tx: Mapped[str | None] = mapped_column(String(66))
+    revoke_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class CoSignature(Base):
+    """The latest educator co-signature of a document's fact root (SPEC 9.9)."""
+
+    __tablename__ = "cosignatures"
+
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    educator_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    educator_address: Mapped[str] = mapped_column(String(42), nullable=False)
+    signature: Mapped[str] = mapped_column(String(132), nullable=False)
+    cosign_tx: Mapped[str | None] = mapped_column(String(66))
     created_at: Mapped[datetime] = _created_at()

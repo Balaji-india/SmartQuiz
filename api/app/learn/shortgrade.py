@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.credentials import results
 from app.learn.grading import on_final_grade
 from app.llm import provider
 from app.models import AnswerGrade, Attempt, Fact, GenerationLog, Question, Quiz, User
@@ -191,4 +192,5 @@ def apply_educator_grade(db: Session, grade_id: uuid.UUID, verdict: str, educato
     attempt.score, pending = score_attempt(questions, attempt.answers, grades)
     attempt.grading_status = "pending_review" if pending else "final"
     db.flush()
+    results.ensure_attempt_hash(db, attempt)  # SPEC 9.9: hashed once grading is final
     return grade

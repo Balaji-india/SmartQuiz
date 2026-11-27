@@ -18,7 +18,8 @@ def test_signup_login_me(client):
     assert signed_up.status_code == 200
     body = signed_up.json()
     assert set(body) == {"token", "user"}
-    assert set(body["user"]) == {"id", "email", "name"}
+    assert set(body["user"]) == {"id", "email", "name", "role", "wallet_address"}  # role + wallet: SPEC 9.9
+    assert body["user"]["role"] == "learner" and body["user"]["wallet_address"] is None
     assert body["user"]["email"] == "a@b.com"
 
     logged_in = client.post("/auth/login", json={"email": "a@b.com", "password": "secret12"})

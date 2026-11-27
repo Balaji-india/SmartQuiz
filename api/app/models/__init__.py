@@ -1,7 +1,9 @@
 from app.models.tables import (
     AnswerGrade,
     Attempt,
+    Badge,
     Base,
+    CoSignature,
     Document,
     Fact,
     FactCoverage,
@@ -11,6 +13,7 @@ from app.models.tables import (
     ReviewCard,
     RevisionNote,
     Quiz,
+    ResultBatch,
     Section,
     User,
 )
@@ -18,7 +21,9 @@ from app.models.tables import (
 __all__ = [
     "AnswerGrade",
     "Attempt",
+    "Badge",
     "Base",
+    "CoSignature",
     "Document",
     "Fact",
     "FactCoverage",
@@ -28,6 +33,7 @@ __all__ = [
     "ReviewCard",
     "RevisionNote",
     "Quiz",
+    "ResultBatch",
     "Section",
     "User",
 ]

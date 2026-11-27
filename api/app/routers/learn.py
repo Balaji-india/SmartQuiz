@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.db import get_db
+from app.credentials.badges import live_badge_ids
 from app.learn import revision
 from app.learn.review import review_summary
 from app.learn.mastery import P_INIT, concept_key, mastery_status
@@ -29,7 +30,7 @@ class ConceptMasteryOut(BaseModel):
     answered: int
     status: str
     fact_idxs: list[int]
-    badge_id: uuid.UUID | None  # set by R08 credentials
+    badge_id: uuid.UUID | None  # the unrevoked badge for this concept (SPEC 9.9)
 
 
 class MasterySummary(BaseModel):
@@ -57,6 +58,7 @@ def mastery_report(db: Session, user_id: uuid.UUID, document_id: uuid.UUID) -> M
     for fact in facts:  # idx order, so groups[key][0] is the concept's first fact
         groups.setdefault(concept_key(fact.concept), []).append(fact)
 
+    badges = live_badge_ids(db, user_id, document_id)
     concepts = []
     for key, group in groups.items():
         first, row = group[0], rows.get(key)
@@ -70,7 +72,7 @@ def mastery_report(db: Session, user_id: uuid.UUID, document_id: uuid.UUID) -> M
                 answered=answered,
                 status=mastery_status(p, answered),
                 fact_idxs=[f.idx for f in group],
-                badge_id=None,
+                badge_id=badges.get(key),
             )
         )
     # weak (lowest first), learning (lowest first), untested (document order), mastered (lowest first).

@@ -19,7 +19,8 @@ def offline_by_default(monkeypatch):
     from app.chain import service
 
     settings = get_settings()
-    for name in ("gemini_api_key", "groq_api_key", "amoy_rpc_url", "issuer_private_key", "registry_address"):
+    for name in ("gemini_api_key", "groq_api_key", "amoy_rpc_url", "issuer_private_key", "registry_address",
+                 "credentials_address", "educator_private_key", "custody_secret"):
         monkeypatch.setattr(settings, name, "")
     monkeypatch.setattr(settings, "chain_optional", True)
     service.reset_chain()
@@ -76,13 +77,19 @@ def client(alembic_cfg, test_engine, monkeypatch):
 HARDHAT_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 LOCAL_RPC = "http://127.0.0.1:8545"
 ARTIFACT = API_DIR.parent / "contracts" / "artifacts" / "contracts" / "SmartQuizRegistry.sol" / "SmartQuizRegistry.json"
+CREDENTIALS_ARTIFACT = (
+    API_DIR.parent / "contracts" / "artifacts" / "contracts" / "SmartQuizCredentials.sol" / "SmartQuizCredentials.json"
+)
+# Hardhat's well-known account #1, used as the educator wallet (it only signs). Public test key.
+HARDHAT_EDUCATOR_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
 
 @pytest.fixture
 def local_chain(monkeypatch):
-    """A fresh SmartQuizRegistry on a local Hardhat node, wired into settings. Skips without a node.
+    """A fresh SmartQuizRegistry and SmartQuizCredentials (educator = Hardhat account #1) on a local Hardhat node,
+    wired into settings. Skips without a node.
 
-    Start one with `npx hardhat node` in contracts/. Never reads REGISTRY_ADDRESS or ISSUER_PRIVATE_KEY.
+    Start one with `npx hardhat node` in contracts/. Never reads the .env chain addresses or keys.
     """
     import json
 
@@ -95,21 +102,31 @@ def local_chain(monkeypatch):
         w3.eth.chain_id
     except Exception:
         pytest.skip("no Hardhat node on 127.0.0.1:8545 (run `npx hardhat node` in contracts/)")
-    if not ARTIFACT.exists():
+    if not ARTIFACT.exists() or not CREDENTIALS_ARTIFACT.exists():
         pytest.skip("contracts are not compiled (run `npx hardhat compile` in contracts/)")
-    artifact = json.loads(ARTIFACT.read_text("utf-8"))
     account = w3.eth.account.from_key(HARDHAT_KEY)
-    factory = w3.eth.contract(abi=artifact["abi"], bytecode=artifact["bytecode"])
-    tx = factory.constructor(account.address).build_transaction(
-        {"from": account.address, "nonce": w3.eth.get_transaction_count(account.address, "pending")}
-    )
-    signed = account.sign_transaction(tx)
-    receipt = w3.eth.wait_for_transaction_receipt(w3.eth.send_raw_transaction(signed.raw_transaction))
+
+    def send(fn):
+        tx = fn.build_transaction({"from": account.address, "nonce": w3.eth.get_transaction_count(account.address, "pending")})
+        receipt = w3.eth.wait_for_transaction_receipt(w3.eth.send_raw_transaction(account.sign_transaction(tx).raw_transaction))
+        assert receipt["status"] == 1
+        return receipt
+
+    def deploy(path, *args):
+        artifact = json.loads(path.read_text("utf-8"))
+        receipt = send(w3.eth.contract(abi=artifact["abi"], bytecode=artifact["bytecode"]).constructor(*args))
+        return w3.eth.contract(address=receipt["contractAddress"], abi=artifact["abi"])
+
+    registry = deploy(ARTIFACT, account.address)
+    credentials = deploy(CREDENTIALS_ARTIFACT, account.address, registry.address)
+    send(credentials.functions.addEducator(w3.eth.account.from_key(HARDHAT_EDUCATOR_KEY).address))
 
     settings = get_settings()
     monkeypatch.setattr(settings, "amoy_rpc_url", LOCAL_RPC)
     monkeypatch.setattr(settings, "issuer_private_key", HARDHAT_KEY)
-    monkeypatch.setattr(settings, "registry_address", receipt["contractAddress"])
+    monkeypatch.setattr(settings, "registry_address", registry.address)
+    monkeypatch.setattr(settings, "credentials_address", credentials.address)
+    monkeypatch.setattr(settings, "educator_private_key", HARDHAT_EDUCATOR_KEY)
     service.reset_chain()
     return service.get_chain()
 

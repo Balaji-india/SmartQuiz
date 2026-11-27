@@ -14,6 +14,7 @@ from app.auth import get_current_user
 from app.chain.service import explorer_url
 from app.config import get_settings
 from app.db import get_db
+from app.credentials import results as attempt_results
 from app.learn.grading import on_final_grade
 from app.learn.review import review_summary
 from app.learn.shortgrade import HOOK_GRADE, MAX_ANSWER_CHARS, grade_attempt_shorts, score_attempt
@@ -438,5 +439,7 @@ def submit_attempt(
     db.add(attempt)
     db.flush()  # the grades reference the attempt
     db.add_all(grades.values())
+    db.flush()
+    attempt_results.ensure_attempt_hash(db, attempt)  # SPEC 9.9; none while a short answer waits for an educator
     db.commit()
     return results

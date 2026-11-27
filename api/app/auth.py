@@ -67,3 +67,10 @@ def get_current_user(
     if user is None:
         raise unauthorized
     return user
+
+
+def require_educator(user: User = Depends(get_current_user)) -> User:
+    """Educator-only endpoints (SPEC 9.9). Roles are set by api/scripts/make_educator.py."""
+    if user.role != "educator":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Educators only")
+    return user

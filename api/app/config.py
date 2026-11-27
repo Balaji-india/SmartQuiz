@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     amoy_rpc_url: str = ""
     issuer_private_key: str = ""
     registry_address: str = ""
+    credentials_address: str = ""  # SmartQuizCredentials (SPEC 9.8)
+    educator_private_key: str = ""  # testnet-only educator wallet; signs EIP-712 messages, never sends a tx
+    custody_secret: str = ""  # custodial badge addresses; must never change once a custodial badge exists
     chain_optional: bool = True
 
     chat_min_sim: float = 0.5

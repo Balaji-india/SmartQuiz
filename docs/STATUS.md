@@ -588,3 +588,37 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - `coSignDocument` allows a re-co-sign (latest kept). R08 can refuse a second co-sign in the API if wanted.
   - The ChainService does not call the new contract yet; R08 adds that (Settings also need CREDENTIALS_ADDRESS, EDUCATOR_PRIVATE_KEY and CUSTODY_SECRET).
   - No commits made: Deepesh commits and pushes.
+
+## R08 — Credentials API (2026-11-27)
+- **Done:**
+  - Migration `0008_credentials` per SPEC 9.9: `users.role` / `wallet_address`; `attempts.attempt_hash` / `attempt_salt` / `batch_id`; tables `result_batches`, `badges` (plus `evidence_attempt_ids`, recorded in SPEC), `cosignatures`; `documents.revoked` / `revoke_tx` / `revoke_reason`. Applied to the dev DB.
+  - `api/scripts/make_educator.py <email> [--learner]`.
+  - Settings: `CREDENTIALS_ADDRESS`, `EDUCATOR_PRIVATE_KEY`, `CUSTODY_SECRET` (tests blank them by default). `.env` got a generated `CUSTODY_SECRET` (never printed; must never change now that custodial badges exist).
+  - `ChainService` (same send lock, nonce replacement and 30 gwei fee floor): anchor, mint (token id from `BadgeMinted`), revoke badge, co-sign, revoke document, the reads, and `educator_sign` (EIP-712 with EDUCATOR_PRIVATE_KEY in the connected chain's domain). New `ChainRevert` carries the contract error name.
+  - `app/credentials/results.py`: attempt hash when grading is final (at submit, or in `apply_educator_grade` once nothing is pending), batches of final unanchored attempts. `app/credentials/badges.py`: evidence attempts, custodial addresses, live badges.
+  - Routers: `badges.py` (`POST/GET /badges`), `educator.py` (anchor, grading queue + grade, documents, co-sign, revoke document, revoke badge; `require_educator` → 403), `auth.py` (`role`, `wallet_address`, `PUT /auth/me/wallet`), `verify.py` (`/verify/attempt`, `/verify/badge`, `cosign` + `document_revoked` on `/verify/question`), `MasteryOut.badge_id`.
+  - SPEC 9.9 gained a "Details (R08, as built)" block (status codes, match rules, the extra column).
+- **Real Amoy run** (dev DB, learner from R02 with 2 mastered concepts, a new educator user `r08-educator@example.invalid`; MetaMask mint skipped for now at Deepesh's choice):
+  | step | tx | gas | POL |
+  |---|---|---|---|
+  | anchor via `POST /badges` (6 attempts) | [0x241de50c…](https://amoy.polygonscan.com/tx/0x241de50cb7d9997557abbee93f7d6f66d02e75abfb1c8ff152cfe929455ebaeb) | 79,866 | 0.004792 |
+  | mint custodial badge #1 "Authorization" | [0x0aaae333…](https://amoy.polygonscan.com/tx/0x0aaae33300a7b84f009dab85d7e7f2202d8122f2d62ae36371472a0fec55ee12) | 190,297 | 0.011418 |
+  | mint custodial badge #2 "Multi-factor authentication" | [0x09081653…](https://amoy.polygonscan.com/tx/0x0908165347f61ccdbc2b5804d6fa141d1cf55afb0b5064438b7a3b20a9177571) | 172,357 | 0.010341 |
+  | `POST /educator/anchor` (6 other attempts) | [0xd2c1701b…](https://amoy.polygonscan.com/tx/0xd2c1701b6546d78a3aff97fe0f1ec0f171507abd3efc81d8a765bfdc60026442) | 79,866 | 0.004792 |
+  | co-sign demo `sample.pdf` (3ce3f1e0…) | [0x76eaad44…](https://amoy.polygonscan.com/tx/0x76eaad44bb79d399556fb81b751a165fa27e342f669d3c1c97739e180a767ce1) | 84,498 | 0.005070 |
+  | revoke badge #2 | [0x130ea64d…](https://amoy.polygonscan.com/tx/0x130ea64d6e366595d2f030e43191231ffc7356e314f516de13466dcb79947a33) | 56,024 | 0.003361 |
+  - Total 0.0398 POL; issuer 0.742 → 0.702 POL. Custodial holder `0x25a83bDe5edD5df854F23a118A806829A06af02F`. Public verify on Amoy: `/verify/attempt` match true + verified_on_chain true; `/verify/badge/1` match true, not revoked; `/verify/badge/2` match true, revoked true.
+  - MetaMask mint (same day, after the run): the learner's wallet set to Deepesh's MetaMask learner account `0x22FADbe67911A1f95B0A0c1DA4812676E8467181` (`PUT /auth/me/wallet`), then "Multi-factor authentication" claimed again (the revoked badge #2 did not block it): **badge #3** to that address, tx [0x1ba661cf…](https://amoy.polygonscan.com/tx/0x1ba661cff552f9e6f2c6fb282dfa59c89f98d22d4bdd063f65bfefff5d4b5857), 190,297 gas, 0.011418 POL. `ownerOf(3)` = the MetaMask address; `/verify/badge/3` match true, not revoked. Issuer now 0.691 POL.
+- **How to run:**
+  - Migrate: `./scripts/dev.sh migrate`
+  - Make an educator: `cd api && PYTHONUTF8=1 .venv/bin/python scripts/make_educator.py <email>`
+  - Tests: `cd contracts && npx hardhat node` (for the chain tests, in a second terminal), then `cd api && PYTHONUTF8=1 .venv/bin/python -m pytest -q`
+- **Test result:**
+  - pytest **369 passed** with a local Hardhat node (28 new in `tests/test_credentials_api.py`: 403 on all 7 educator endpoints, make_educator, wallet checksum and 6 invalid forms, custodial address deterministic + secret-dependent, attempt hash stable and tamper-evident, deferred attempt hashed only after the educator grade (queue, 422/409/404), badge 404/409/503 rules, anchor 503 marks nothing, EIP-712 signatures equal the R07 fixture byte for byte, anchoring takes only final unanchored attempts in order + tampered score gives match false, end-to-end badges (wallet and custodial), co-sign, revocations and mastery badge_id, offline nulls and 503 when required, co-sign needs registration). `test_auth` updated for the new user fields.
+  - Hardhat 46 passing (contracts unchanged).
+- **Open issues:**
+  - One server-held educator wallet signs for every educator user; per-educator wallets (signing in the browser) would be a later change.
+  - `GET /educator/documents` and the grading queue show every user's data to every educator (fine for the team as educators; no course scoping).
+  - A send whose receipt times out may still land: for an anchor that leaves an orphan batch on chain (harmless; the retry anchors a new one); a mint could land without a DB row (the learner could claim again and get a second token). Not seen on Amoy.
+  - Revoking a document does not block new quizzes on it yet; it blocks badge claims and co-signing.
+  - No commits made: Deepesh commits and pushes.

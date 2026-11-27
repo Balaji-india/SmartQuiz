@@ -1,4 +1,5 @@
-"""SmartQuizRegistry over web3.py (SPEC section 6). The only code that talks to the chain.
+"""SmartQuizRegistry (SPEC section 6) and SmartQuizCredentials (SPEC 9.8) over web3.py. The only code that talks to
+the chain.
 
 One issuer wallet signs every transaction, so sends are serialised with a process-wide lock.
 Only hashes leave the server. The private key is never logged.
@@ -14,11 +15,14 @@ from eth_account import Account
 from eth_utils import keccak
 from web3 import Web3
 from web3.exceptions import ContractCustomError, ContractLogicError
+from web3.logs import DISCARD
 from web3.middleware import ExtraDataToPOAMiddleware
 
+from app.chain import credentials as cred
 from app.config import get_settings
 
 ABI_PATH = Path(__file__).parent / "abi" / "SmartQuizRegistry.json"
+CREDENTIALS_ABI_PATH = Path(__file__).parent / "abi" / "SmartQuizCredentials.json"
 AMOY_CHAIN_ID = 80002
 EXPLORER_TX = "https://amoy.polygonscan.com/tx/"
 RECEIPT_TIMEOUT_SEC = 120
@@ -35,6 +39,14 @@ _send_lock = threading.Lock()
 
 class ChainError(RuntimeError):
     """The chain is unreachable, misconfigured, or a transaction failed."""
+
+
+class ChainRevert(ChainError):
+    """A read or a transaction reverted with a contract error (`name` is the custom error, e.g. UnknownToken)."""
+
+    def __init__(self, message: str, name: str):
+        super().__init__(message)
+        self.name = name
 
 
 def chain_id_of(value: uuid.UUID | str) -> str:
@@ -54,7 +66,14 @@ def _hex(raw: bytes) -> str:
 
 
 class ChainService:
-    def __init__(self, rpc_url: str, private_key: str, registry_address: str):
+    def __init__(
+        self,
+        rpc_url: str,
+        private_key: str,
+        registry_address: str,
+        credentials_address: str = "",
+        educator_private_key: str = "",
+    ):
         if not rpc_url or not private_key or not registry_address:
             raise ChainError("chain is not configured: AMOY_RPC_URL, ISSUER_PRIVATE_KEY and REGISTRY_ADDRESS are required")
         self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": RPC_TIMEOUT_SEC}))
@@ -67,6 +86,15 @@ class ChainService:
             raise ChainError("ISSUER_PRIVATE_KEY is not a valid private key") from None
         self.address = Web3.to_checksum_address(registry_address)
         self.contract = self.w3.eth.contract(address=self.address, abi=json.loads(ABI_PATH.read_text("utf-8")))
+        self.credentials_address = Web3.to_checksum_address(credentials_address) if credentials_address else None
+        self._credentials = (
+            self.w3.eth.contract(
+                address=self.credentials_address, abi=json.loads(CREDENTIALS_ABI_PATH.read_text("utf-8"))
+            )
+            if self.credentials_address
+            else None
+        )
+        self._educator_key = educator_private_key
         self._chain_id: int | None = None
 
     @property
@@ -115,6 +143,9 @@ class ChainService:
         return {"nonce": nonce, **fees}
 
     def _send(self, fn) -> str:
+        return self._send_receipt(fn)[0]
+
+    def _send_receipt(self, fn) -> tuple[str, dict]:
         with _send_lock:
             try:
                 tx = fn.build_transaction({"from": self.issuer, "chainId": self.chain_id, **self._nonce_and_fees()})
@@ -122,7 +153,8 @@ class ChainService:
                 signed = self._account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
             except (ContractLogicError, ContractCustomError) as exc:
-                raise ChainError(f"transaction would revert: {self._revert_name(exc)}") from exc
+                name = self._revert_name(exc)
+                raise ChainRevert(f"transaction would revert: {name}", name) from exc
             except ChainError:
                 raise
             except Exception as exc:
@@ -134,14 +166,15 @@ class ChainService:
                 raise ChainError(f"no receipt for {_hex(tx_hash)} within {RECEIPT_TIMEOUT_SEC}s") from exc
         if receipt["status"] != 1:
             raise ChainError(f"transaction {_hex(tx_hash)} reverted")
-        return _hex(tx_hash)
+        return _hex(tx_hash), receipt
 
     def _revert_name(self, exc: Exception) -> str:
         data = getattr(exc, "data", None)
         if isinstance(data, dict):  # Hardhat wraps the revert data: {"message": ..., "data": "0x..."}
             data = data.get("data")
         if isinstance(data, str) and len(data) >= 10:
-            for item in self.contract.abi:
+            abis = self.contract.abi + (self._credentials.abi if self._credentials is not None else [])
+            for item in abis:
                 if item.get("type") == "error":
                     sig = f"{item['name']}({','.join(i['type'] for i in item['inputs'])})"
                     if data[:10] == "0x" + keccak(text=sig).hex()[:8]:
@@ -185,6 +218,9 @@ class ChainService:
     def _call(self, fn):
         try:
             return fn.call()
+        except (ContractLogicError, ContractCustomError) as exc:
+            name = self._revert_name(exc)
+            raise ChainRevert(f"chain read reverted: {name}", name) from exc
         except Exception as exc:
             raise ChainError(f"chain read failed: {type(exc).__name__}") from exc
 
@@ -204,6 +240,97 @@ class ChainService:
         doc, quiz_hash, at = self._call(self.contract.functions.getQuiz(_b32(chain_id_of(quiz_uuid))))
         return None if at == 0 else (_hex(doc), _hex(quiz_hash), int(at))
 
+    # ---- SmartQuizCredentials (SPEC 9.8, 9.9) ---------------------------------------------
+
+    @property
+    def credentials(self):
+        if self._credentials is None:
+            raise ChainError("credentials contract is not configured: CREDENTIALS_ADDRESS is required")
+        return self._credentials
+
+    def educator_address(self) -> str:
+        return self._educator_account().address
+
+    def _educator_account(self):
+        if not self._educator_key:
+            raise ChainError("educator wallet is not configured: EDUCATOR_PRIVATE_KEY is required")
+        try:
+            return Account.from_key(self._educator_key)
+        except Exception:
+            raise ChainError("EDUCATOR_PRIVATE_KEY is not a valid private key") from None
+
+    def educator_sign(self, primary: str, **fields) -> tuple[str, str]:
+        """(educator address, EIP-712 signature) in this contract's domain. The educator wallet only signs; the issuer
+        sends the tx and pays gas."""
+        account = self._educator_account()
+        key = "0x" + bytes(account.key).hex()
+        return account.address, cred.sign(key, self.chain_id, self.credentials.address, primary, **fields)
+
+    def anchor_results(self, batch_id: str, root: str, count: int) -> str:
+        fn = self.credentials.functions.anchorResults(_b32(batch_id), _b32(root), int(count))
+        return self._send(fn)
+
+    def mint_badge(
+        self, to: str, document_uuid: uuid.UUID | str, concept_hash: str, evidence_hash: str
+    ) -> tuple[str, int]:
+        """(tx hash, token id). The token id is read from the BadgeMinted event of the receipt."""
+        fn = self.credentials.functions.mintBadge(
+            Web3.to_checksum_address(to), _b32(chain_id_of(document_uuid)), _b32(concept_hash), _b32(evidence_hash)
+        )
+        tx_hash, receipt = self._send_receipt(fn)
+        # The receipt also has Transfer and Locked logs; only BadgeMinted is wanted.
+        events = self.credentials.events.BadgeMinted().process_receipt(receipt, errors=DISCARD)
+        if not events:
+            raise ChainError(f"mint {tx_hash} has no BadgeMinted event")
+        return tx_hash, int(events[0]["args"]["tokenId"])
+
+    def revoke_badge(self, token_id: int, reason_hash: str, signature: str) -> str:
+        fn = self.credentials.functions.revokeBadge(int(token_id), _b32(reason_hash), bytes.fromhex(signature[2:]))
+        return self._send(fn)
+
+    def cosign_document(self, document_uuid: uuid.UUID | str, fact_root: str, signature: str) -> str:
+        fn = self.credentials.functions.coSignDocument(
+            _b32(chain_id_of(document_uuid)), _b32(fact_root), bytes.fromhex(signature[2:])
+        )
+        return self._send(fn)
+
+    def revoke_document(self, document_uuid: uuid.UUID | str, reason_hash: str, signature: str) -> str:
+        fn = self.credentials.functions.revokeDocument(
+            _b32(chain_id_of(document_uuid)), _b32(reason_hash), bytes.fromhex(signature[2:])
+        )
+        return self._send(fn)
+
+    def get_batch(self, batch_id: str) -> tuple[str, int, int] | None:
+        """(root, count, anchored_at), or None if the batch was never anchored."""
+        root, count, at = self._call(self.credentials.functions.getBatch(_b32(batch_id)))
+        return None if at == 0 else (_hex(root), int(count), int(at))
+
+    def verify_result(self, batch_id: str, leaf: str, proof: list[str]) -> bool:
+        fn = self.credentials.functions.verifyResult(_b32(batch_id), _b32(leaf), [_b32(p) for p in proof])
+        return bool(self._call(fn))
+
+    def get_badge(self, token_id: int) -> dict | None:
+        """{doc_id, concept_hash, evidence_hash, issued_at, revoked}, or None for an unknown token."""
+        try:
+            doc, concept, evidence, at, revoked = self._call(self.credentials.functions.getBadge(int(token_id)))
+        except ChainRevert as exc:
+            if exc.name == "UnknownToken":
+                return None
+            raise
+        return {"doc_id": _hex(doc), "concept_hash": _hex(concept), "evidence_hash": _hex(evidence),
+                "issued_at": int(at), "revoked": bool(revoked)}
+
+    def owner_of(self, token_id: int) -> str:
+        return self._call(self.credentials.functions.ownerOf(int(token_id)))
+
+    def get_cosign(self, document_uuid: uuid.UUID | str) -> tuple[str, int] | None:
+        """(educator address, at), or None if the document was never co-signed."""
+        educator, at = self._call(self.credentials.functions.getCoSign(_b32(chain_id_of(document_uuid))))
+        return None if at == 0 else (Web3.to_checksum_address(educator), int(at))
+
+    def is_document_revoked(self, document_uuid: uuid.UUID | str) -> bool:
+        return bool(self._call(self.credentials.functions.isDocumentRevoked(_b32(chain_id_of(document_uuid)))))
+
 
 _service_lock = threading.Lock()
 _service: ChainService | None = None
@@ -222,7 +349,9 @@ def get_chain() -> ChainService:
             raise ChainError("chain unavailable (recent failure)")
         s = get_settings()
         try:
-            service = ChainService(s.amoy_rpc_url, s.issuer_private_key, s.registry_address)
+            service = ChainService(
+                s.amoy_rpc_url, s.issuer_private_key, s.registry_address, s.credentials_address, s.educator_private_key
+            )
             service.chain_id  # connect once, so an unreachable RPC is reported here
         except ChainError:
             _failed_at = time.monotonic()

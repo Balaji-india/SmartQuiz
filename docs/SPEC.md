@@ -444,6 +444,36 @@ VerifyQuestionOut adds "cosign":{"educator_address","at","cosign_tx"}|null and "
 ```
 `chain_status` / null rules as section 2. Learner answers and answer keys are never returned by `/verify/*`.
 
+**Details (R08, as built):**
+- Extra column `badges.evidence_attempt_ids uuid[]` (the attempts behind `evidence_hash`, in created_at order), so
+  `/verify/badge` can list and recompute the evidence later. `attempts.attempt_salt` = 16 random bytes, 32 hex chars.
+- `grades` in attempt_hash: one entry per position, the final verdict of a short answer, null for an MCQ.
+  Attempts that were final before R08 get their hash when first anchored.
+- Batches: `POST /educator/anchor` takes every final, unanchored attempt (all users); `POST /badges` anchors this
+  user's. Leaves in (created_at, id) order. The anchor tx is sent first; on any failure nothing is marked anchored
+  (503), so a retry builds a new batch. The anchor batch is kept even if the following mint fails.
+- A badge exists only on chain: `POST /badges` returns 503 when the chain or CREDENTIALS_ADDRESS is unavailable, even
+  with `CHAIN_OPTIONAL=true`. Order of checks: 404 document / concept, 409 document revoked, the live (unrevoked)
+  badge for the concept is returned without a new mint, 409 not mastered, 503 custodial without CUSTODY_SECRET,
+  then anchor + mint. Evidence = the user's final attempts on the document with a question whose target fact has the
+  concept. A revoked badge does not block a new claim. `MasteryOut.badge_id` = the live badge.
+- `PUT /auth/me/wallet`: `0x` + 40 hex; a mixed-case address must carry a valid EIP-55 checksum; the zero address is
+  refused; stored checksummed. `null` clears it. Signup / login `user` also carry `role` and `wallet_address`.
+- Educator actions: chain reverts `RootMismatch` / `AlreadyRevoked` / `BatchExists` / `UnknownToken` → 409, any other
+  chain failure → 503. Co-sign: 409 if the document is revoked or not registered. Revoke document / badge: 409 if
+  already revoked; `reason` 1–500 chars. `POST /educator/grading/{id}`: 404 unknown grade, 409 not deferred or already
+  graded, 422 bad verdict. The educator wallet is the one server-held EDUCATOR_PRIVATE_KEY; `cosignatures.educator_id`
+  records which educator user asked. `GET /educator/documents` lists every ready document (all users), cosign from
+  the database. `POST /educator/documents/{id}/revoke` returns the `/educator/documents` item shape (DocumentOut +
+  cosign + revoked).
+- `/verify/attempt`: 409 until the attempt is in a batch. `match` = recomputed hash equals the stored one AND
+  `verifyResult` of the recomputed leaf is true; a batch missing on chain gives `verified_on_chain` / `match` false.
+- `/verify/badge`: `match` = evidence hash recomputes from the evidence attempts, concept hash recomputes, and the
+  on-chain doc id, concept hash, evidence hash and `ownerOf` all equal ours. `revoked` comes from the chain when it is
+  readable, else from the database. Unknown token → 404.
+- `VerifyQuestionOut.cosign.at` is unix seconds from the chain; `cosign` and `document_revoked` are read only when the
+  registry read succeeded and CREDENTIALS_ADDRESS is set (otherwise null).
+
 ### 9.10 R09–R10 — Web pages
 - `/documents/[id]/mastery`: summary tiles, concept list by status with sections and Source chips, "Revision notes"
   (generate + view, every sentence with fact chips), "Claim badge" on mastered concepts.
