@@ -4,9 +4,13 @@ import type {
   AuthOut,
   ChatOut,
   DocumentOut,
+  MasteryOut,
   MetricsOut,
+  QuizMode,
   QuizOut,
   QuizProgressOut,
+  ReviewSummaryOut,
+  RevisionOut,
   TextbookOut,
   User,
   VerifyFactOut,
@@ -39,6 +43,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public body: unknown = null, // the parsed JSON error body, e.g. the review 409's next_due
   ) {
     super(message);
   }
@@ -66,7 +71,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     if (response.status === 401 && token) setToken(null);
-    throw new ApiError(response.status, detailText(body?.detail, response.statusText || "Request failed"));
+    throw new ApiError(response.status, detailText(body?.detail, response.statusText || "Request failed"), body);
   }
   return response.json() as Promise<T>;
 }
@@ -94,14 +99,21 @@ export const getTextbook = (id: string) => apiFetch<TextbookOut>(`/documents/${i
 export const registerDocument = (id: string) => post<DocumentOut>(`/documents/${id}/register`);
 
 // Quizzes
-export const createQuiz = (document_id: string, num_questions = 10, time_limit_sec = 600) =>
-  post<QuizOut>("/quizzes", { document_id, num_questions, time_limit_sec });
+export const createQuiz = (document_id: string, num_questions = 10, time_limit_sec = 600, mode: QuizMode = "practice", num_short = 0) =>
+  post<QuizOut>("/quizzes", { document_id, num_questions, time_limit_sec, mode, num_short });
 export const getQuiz = (id: string) => apiFetch<QuizOut>(`/quizzes/${id}`);
 export const getQuizProgress = (id: string) => apiFetch<QuizProgressOut>(`/quizzes/${id}/progress`);
 export const startQuiz = (id: string) => post<QuizOut>(`/quizzes/${id}/start`);
 export const submitAttempt = (id: string, answers: (number | string | null)[], time_taken_sec: number) =>
   post<AttemptResult>(`/quizzes/${id}/attempts`, { answers, time_taken_sec });
 export const getAttempt = (id: string) => apiFetch<AttemptResult>(`/attempts/${id}`);
+
+// Learning (SPEC 9.4–9.6)
+export const getMastery = (document_id: string) => apiFetch<MasteryOut>(`/documents/${document_id}/mastery`);
+export const getRevision = (document_id: string) => apiFetch<RevisionOut>(`/documents/${document_id}/revision`);
+export const createRevision = (document_id: string, concepts: string[] | null) =>
+  post<RevisionOut>(`/documents/${document_id}/revision`, { concepts });
+export const getReviewSummary = (document_id: string) => apiFetch<ReviewSummaryOut>(`/documents/${document_id}/review`);
 
 // Chat and metrics
 export const sendChat = (document_id: string, message: string) => post<ChatOut>("/chat", { document_id, message });

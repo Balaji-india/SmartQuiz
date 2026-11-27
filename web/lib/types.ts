@@ -2,7 +2,7 @@
 
 export type ChainStatus = "pending" | "confirmed" | "offline";
 
-export type User = { id: string; email: string; name: string };
+export type User = { id: string; email: string; name: string; role: "learner" | "educator"; wallet_address: string | null };
 export type AuthOut = { token: string; user: User };
 
 export type DocumentOut = {

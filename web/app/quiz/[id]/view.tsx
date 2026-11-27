@@ -7,10 +7,16 @@ import { useLoad } from "@/lib/use-load";
 import { AuthedPage } from "@/components/shell";
 import { Button, ButtonLink, Card, ChainBadge, ErrorBox, Hash, Loading, NavyPanel } from "@/components/ui";
 import { createQuiz, getAttempt, getQuiz, getQuizProgress, startQuiz, submitAttempt } from "@/lib/api";
-import type { AttemptResult, QuizOut, QuizProgressOut } from "@/lib/types";
+import type { AttemptResult, QuizOut, QuizProgressOut, SourceOut } from "@/lib/types";
+import { FactChips } from "@/components/facts";
 
 const POLL_MS = 2000;
 const LETTERS = ["A", "B", "C", "D"];
+const SHORT_MAX = 500; // SPEC 9.7
+const SHORT_IN_PRACTICE = 2;
+
+type Answer = number | string | null;
+const isAnswered = (a: Answer) => (typeof a === "string" ? a.trim() !== "" : a !== null);
 
 // Per-tab conveniences only: the server is the source of truth for timing and scoring.
 function stored<T>(key: string): T | null {
@@ -145,7 +151,7 @@ function useCountdown(startedAt: string, limitSec: number, onExpire: () => void)
 function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: AttemptResult) => void }) {
   const key = `sq_answers_${quiz.id}`;
   const questions = quiz.questions;
-  const [answers, setAnswers] = useState<(number | null)[]>(() => stored<(number | null)[]>(key) ?? questions.map(() => null));
+  const [answers, setAnswers] = useState<Answer[]>(() => stored<Answer[]>(key) ?? questions.map(() => null));
   const [current, setCurrent] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -158,7 +164,11 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
     setError(null);
     try {
       const elapsed = Math.round((Date.now() - new Date(quiz.started_at!).getTime()) / 1000);
-      const result = await submitAttempt(quiz.id, answers, Math.max(0, elapsed));
+      // Short answers: trimmed, empty -> null (graded incorrect without an LLM call). MCQ: index or null.
+      const payload = answers.map((a, k) =>
+        questions[k].qtype === "short" ? (typeof a === "string" && a.trim() ? a.trim().slice(0, SHORT_MAX) : null) : typeof a === "number" ? a : null,
+      );
+      const result = await submitAttempt(quiz.id, payload, Math.max(0, elapsed));
       store(`sq_result_${quiz.id}`, result);
       onSubmitted(result);
     } catch (e) {
@@ -166,17 +176,17 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
       setError((e as Error).message);
       setBusy(false);
     }
-  }, [answers, onSubmitted, quiz.id, quiz.started_at]);
+  }, [answers, onSubmitted, questions, quiz.id, quiz.started_at]);
   const left = useCountdown(quiz.started_at!, quiz.time_limit_sec, submit);
 
-  const choose = (i: number) => {
+  const choose = (i: Answer) => {
     const next = answers.map((a, k) => (k === current ? i : a));
     setAnswers(next);
     store(key, next);
   };
 
   const q = questions[current];
-  const answered = answers.filter((a) => a !== null).length;
+  const answered = answers.filter(isAnswered).length;
   const mm = String(Math.floor(left / 60)).padStart(1, "0");
   const ss = String(left % 60).padStart(2, "0");
   return (
@@ -194,14 +204,15 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
           <button
             key={item.id}
             onClick={() => setCurrent(k)}
-            aria-label={`Question ${k + 1}${answers[k] !== null ? ", answered" : ""}`}
-            className={`h-3 w-7 rounded-full ${k === current ? "bg-accent" : answers[k] !== null ? "bg-navy" : "bg-line"}`}
+            aria-label={`Question ${k + 1}${isAnswered(answers[k]) ? ", answered" : ""}`}
+            className={`h-3 w-7 rounded-full ${k === current ? "bg-accent" : isAnswered(answers[k]) ? "bg-navy" : "bg-line"}`}
           />
         ))}
       </div>
       <Card>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-paper px-2.5 py-1 font-semibold capitalize text-muted">{q.bloom_level}</span>
+          {q.qtype === "short" && <span className="rounded-full bg-navy px-2.5 py-1 font-semibold text-white">Short answer</span>}
           {q.flagged_general && (
             <span className="rounded-full bg-warn-soft px-2.5 py-1 font-semibold text-warn" title="An independent model could often answer this without your notes">
               General knowledge
@@ -209,6 +220,25 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
           )}
         </div>
         <h2 className="mt-3 text-xl font-semibold leading-snug">{q.stem}</h2>
+        {q.qtype === "short" ? (
+          <div className="mt-5">
+            <label htmlFor={`short-${q.id}`} className="text-sm text-muted">
+              Answer in a sentence or two, in your own words. It is graded only against the facts this question cites.
+            </label>
+            <textarea
+              id={`short-${q.id}`}
+              key={q.id}
+              rows={5}
+              maxLength={SHORT_MAX}
+              value={typeof answers[current] === "string" ? (answers[current] as string) : ""}
+              onChange={(e) => choose(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-line bg-card px-4 py-3 text-base focus:border-accent"
+            />
+            <p className="mt-1 text-right text-xs text-muted tabular-nums">
+              {typeof answers[current] === "string" ? (answers[current] as string).length : 0} / {SHORT_MAX}
+            </p>
+          </div>
+        ) : (
         <ul className="mt-5 space-y-2.5">
           {q.options.map((option, i) => (
             <li key={i}>
@@ -225,6 +255,7 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
             </li>
           ))}
         </ul>
+        )}
       </Card>
       {error && <ErrorBox message={error} />}
       <div className="flex flex-wrap justify-between gap-3">
@@ -245,9 +276,137 @@ function Taking({ quiz, onSubmitted }: { quiz: QuizOut; onSubmitted: (r: Attempt
   );
 }
 
-function Results({ quiz, result }: { quiz: QuizOut; result: AttemptResult | null }) {
+type ResultItem = AttemptResult["results"][number];
+
+function SourceCard({ s, tone = "accent" }: { s: SourceOut; tone?: "accent" | "bad" }) {
+  return (
+    <div className={`rounded-lg border-l-4 bg-paper px-3 py-2 text-sm ${tone === "bad" ? "border-bad" : "border-accent"}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-accent-strong">
+        Source · F{s.idx} · p. {s.page} · {s.section}
+      </p>
+      <p className="mt-1">{s.text}</p>
+    </div>
+  );
+}
+
+const VERDICT: Record<"correct" | "partial" | "incorrect", { label: string; chip: string }> = {
+  correct: { label: "Correct", chip: "bg-ok-soft text-ok" },
+  partial: { label: "Partly correct", chip: "bg-warn-soft text-warn" },
+  incorrect: { label: "Incorrect", chip: "bg-bad-soft text-bad" },
+};
+
+function statusChip(r: ResultItem): { label: string; chip: string } {
+  if (r.qtype === "short") {
+    if (!r.grade || r.grade.verdict === null) return { label: "Waiting for educator", chip: "bg-paper text-muted" };
+    return VERDICT[r.grade.verdict];
+  }
+  if (r.correct) return VERDICT.correct;
+  return { label: r.chosen === null ? "Not answered" : "Incorrect", chip: "bg-bad-soft text-bad" };
+}
+
+function McqResult({ q, r }: { q: QuizOut["questions"][number]; r: ResultItem | undefined }) {
+  const byOption = new Map((r?.misconceptions ?? []).map((m) => [m.option, m]));
+  const chosenWrong = r && r.chosen !== null && !r.correct ? byOption.get(r.chosen) : undefined;
+  const others = (r?.misconceptions ?? []).filter((m) => m !== chosenWrong);
+  return (
+    <>
+      <ul className="mt-3 space-y-1.5 text-sm">
+        {q.options.map((o, i) => {
+          const isCorrect = r?.correct_index === i;
+          const isChosen = r?.chosen === i;
+          return (
+            <li key={i} className={`rounded-md px-3 py-2 ${isCorrect ? "bg-ok-soft text-ok" : isChosen ? "bg-bad-soft text-bad" : "text-ink/80"}`}>
+              <span className="mr-2 font-semibold">{LETTERS[i]}.</span>
+              {o}
+              {isCorrect && " ✓"}
+              {isChosen && !isCorrect && " (your answer)"}
+            </li>
+          );
+        })}
+      </ul>
+      {chosenWrong && (
+        <div className="mt-4 rounded-lg border border-bad/30 bg-bad-soft/50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-bad">Why {LETTERS[chosenWrong.option]} is wrong</p>
+          <p className="mt-1 text-sm font-semibold">Misconception: {chosenWrong.misconception}</p>
+          <div className="mt-2 space-y-2">
+            {chosenWrong.sources.map((s) => (
+              <SourceCard key={s.idx} s={s} tone="bad" />
+            ))}
+          </div>
+        </div>
+      )}
+      {others.length > 0 && (
+        <details className="mt-3 rounded-lg border border-line px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-semibold text-muted">Why the other choices are wrong</summary>
+          <ul className="mt-2 space-y-3">
+            {others.map((m) => (
+              <li key={m.option}>
+                <p>
+                  <span className="mr-1 font-semibold">{LETTERS[m.option]}.</span>
+                  {m.misconception}
+                </p>
+                <div className="mt-1.5 space-y-2">
+                  {m.sources.map((s) => (
+                    <SourceCard key={s.idx} s={s} tone="bad" />
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
+}
+
+function ShortResult({ r }: { r: ResultItem }) {
+  const g = r.grade;
+  const sources = new Map(r.sources.map((s) => [s.idx, s]));
+  const pending = !g || g.verdict === null;
+  return (
+    <div className="mt-3 space-y-3 text-sm">
+      <div className="rounded-lg bg-paper px-3 py-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Your answer</p>
+        <p className="mt-1 whitespace-pre-wrap">{r.answer_text?.trim() ? r.answer_text : <span className="text-muted">No answer given</span>}</p>
+      </div>
+      {r.model_answer && (
+        <div className="rounded-lg bg-ok-soft/60 px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ok">Model answer</p>
+          <p className="mt-1">{r.model_answer}</p>
+        </div>
+      )}
+      {pending ? (
+        <div className="rounded-lg border border-warn/40 bg-warn-soft p-3 text-warn" role="status">
+          <p className="font-semibold">Waiting for educator</p>
+          <p className="mt-1">
+            The checker was not sure enough{g?.confidence != null ? ` (confidence ${g.confidence} < 70)` : ""}, so an educator will grade this answer. It
+            does not count in your score until then.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-line p-3">
+          <p className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${VERDICT[g.verdict!].chip}`}>{VERDICT[g.verdict!].label}</span>
+            <span className="text-xs text-muted">
+              graded by {g.by === "educator" ? "an educator" : "the checker model"}
+              {g.confidence != null && ` · confidence ${g.confidence}`}
+              {g.deferred && g.by === "educator" && " · after deferral"}
+            </span>
+          </p>
+          {g.reason && <p className="mt-2">{g.reason}</p>}
+          <div className="mt-2">
+            <FactChips idxs={g.fact_idxs} facts={sources} label="Graded against" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Results({ quiz, result, onRefresh }: { quiz: QuizOut; result: AttemptResult | null; onRefresh: () => Promise<void> }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const byId = new Map(result?.results.map((r) => [r.question_id, r]));
 
@@ -255,7 +414,7 @@ function Results({ quiz, result }: { quiz: QuizOut; result: AttemptResult | null
     setBusy(true);
     setError(null);
     try {
-      const next = await createQuiz(quiz.document_id, 10, 600);
+      const next = await createQuiz(quiz.document_id, 10, 600, "practice", SHORT_IN_PRACTICE);
       router.push(`/quiz/${next.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -263,14 +422,33 @@ function Results({ quiz, result }: { quiz: QuizOut; result: AttemptResult | null
     }
   };
 
+  const refresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await onRefresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <NavyPanel>
-        <p className="text-xs font-semibold uppercase tracking-widest text-accent">Results</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-accent">{quiz.mode === "review" ? "Review results" : "Results"}</p>
         {result ? (
-          <h1 className="mt-2 text-4xl font-semibold">
-            {result.score} <span className="text-white/50">/ {result.total}</span>
-          </h1>
+          <>
+            <h1 className="mt-2 text-4xl font-semibold">
+              {result.score} <span className="text-white/50">/ {result.total}</span>
+            </h1>
+            {result.pending_review > 0 && (
+              <p className="mt-2 text-sm text-white/75">
+                + {result.pending_review} short answer{result.pending_review > 1 ? "s" : ""} waiting for an educator; the score updates once graded.
+              </p>
+            )}
+          </>
         ) : (
           <h1 className="mt-2 text-2xl font-semibold">This quiz has been submitted.</h1>
         )}
@@ -278,6 +456,18 @@ function Results({ quiz, result }: { quiz: QuizOut; result: AttemptResult | null
           <Button onClick={newQuiz} disabled={busy}>
             {busy ? "Creating…" : "New quiz (no repeats)"}
           </Button>
+          {result && result.pending_review > 0 && (
+            <button
+              onClick={refresh}
+              disabled={refreshing}
+              className="inline-flex min-h-11 items-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:border-white disabled:opacity-50"
+            >
+              {refreshing ? "Checking…" : "Check grading again"}
+            </button>
+          )}
+          <Link href={`/documents/${quiz.document_id}/mastery`} className="inline-flex min-h-11 items-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:border-white">
+            Mastery
+          </Link>
           <Link href={`/verify?quiz=${quiz.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:border-white">
             Verify this quiz
           </Link>
@@ -305,47 +495,24 @@ function Results({ quiz, result }: { quiz: QuizOut; result: AttemptResult | null
       <ol className="space-y-4">
         {quiz.questions.map((q) => {
           const r = byId.get(q.id);
+          const chip = r ? statusChip(r) : null;
           return (
             <li key={q.id}>
               <Card>
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="text-sm text-muted">Question {q.position}</p>
-                  {r && (
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${r.correct ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>
-                      {r.correct ? "Correct" : r.chosen === null ? "Not answered" : "Incorrect"}
-                    </span>
-                  )}
+                  <p className="text-sm text-muted">
+                    Question {q.position}
+                    {q.qtype === "short" && " · short answer"} · <span className="capitalize">{q.bloom_level}</span>
+                  </p>
+                  {chip && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${chip.chip}`}>{chip.label}</span>}
                 </div>
                 <h3 className="mt-1 text-lg font-semibold leading-snug">{q.stem}</h3>
-                <ul className="mt-3 space-y-1.5 text-sm">
-                  {q.options.map((o, i) => {
-                    const isCorrect = r?.correct_index === i;
-                    const isChosen = r?.chosen === i;
-                    return (
-                      <li
-                        key={i}
-                        className={`rounded-md px-3 py-2 ${isCorrect ? "bg-ok-soft text-ok" : isChosen ? "bg-bad-soft text-bad" : "text-ink/80"}`}
-                      >
-                        <span className="mr-2 font-semibold">{LETTERS[i]}.</span>
-                        {o}
-                        {isCorrect && " ✓"}
-                        {isChosen && !isCorrect && " (your answer)"}
-                      </li>
-                    );
-                  })}
-                </ul>
+                {q.qtype === "short" ? r && <ShortResult r={r} /> : <McqResult q={q} r={r} />}
                 <div className="mt-4 space-y-2">
                   {(r?.sources ?? []).map((s) => (
-                    <div key={s.idx} className="rounded-lg border-l-4 border-accent bg-paper px-3 py-2 text-sm">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-accent-strong">
-                        Source · F{s.idx} · p. {s.page} · {s.section}
-                      </p>
-                      <p className="mt-1">{s.text}</p>
-                    </div>
+                    <SourceCard key={s.idx} s={s} />
                   ))}
-                  {!r && q.fact_idxs && (
-                    <p className="text-xs text-muted">Sources: {q.fact_idxs.map((f) => `F${f}`).join(", ")}</p>
-                  )}
+                  {!r && q.fact_idxs && <p className="text-xs text-muted">Sources: {q.fact_idxs.map((f) => `F${f}`).join(", ")}</p>}
                 </div>
                 <div className="mt-3">
                   <Link href={`/verify?question=${q.id}`} className="text-sm font-semibold text-accent-strong underline underline-offset-2">
@@ -391,6 +558,15 @@ function Quiz() {
     }
   };
 
+  // "Check grading again": reload through GET /attempts/{id} (an educator may have graded a deferred answer).
+  const refreshResult = async () => {
+    const attempt = result?.attempt_id ?? quiz?.attempt_id;
+    if (!attempt) return;
+    const next = await getAttempt(attempt);
+    store(`sq_result_${id}`, next);
+    setResult(next);
+  };
+
   const onSubmitted = useCallback(
     (r: AttemptResult) => {
       setResult(r);
@@ -424,7 +600,7 @@ function Quiz() {
     if (resultError) return <ErrorBox message={resultError} onRetry={reloadResult} />;
     return <Loading label="Loading your result…" />;
   }
-  if (quiz.submitted || result) return <Results quiz={quiz} result={result} />;
+  if (quiz.submitted || result) return <Results quiz={quiz} result={result} onRefresh={refreshResult} />;
   if (!quiz.started_at) return <StartScreen quiz={quiz} onBegin={begin} busy={busy} />;
   return <Taking quiz={quiz} onSubmitted={onSubmitted} />;
 }

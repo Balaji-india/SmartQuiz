@@ -15,6 +15,8 @@ const GATE_LABEL: Record<string, string> = {
   generator_error: "Malformed output",
 };
 
+const BLOOM = ["remember", "understand", "apply", "analyze"] as const;
+
 function Bar({ label, value, max, tone }: { label: string; value: number; max: number; tone: "ok" | "bad" }) {
   const pct = max ? Math.max(2, Math.round((100 * value) / max)) : 0;
   return (
@@ -39,6 +41,7 @@ function Metrics() {
 
   const rejected = Object.values(m.rejected_by_gate).reduce((a, b) => a + b, 0);
   const max = Math.max(m.accepted, ...Object.values(m.rejected_by_gate), 1);
+  const bloomMax = Math.max(1, ...BLOOM.map((b) => m.bloom_levels?.[b] ?? 0));
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -100,6 +103,28 @@ function Metrics() {
               </dl>
             </Card>
             <Card>
+              <h2 className="text-lg font-semibold">Bloom levels (accepted)</h2>
+              <div className="mt-4 space-y-4">
+                {BLOOM.map((b) => (
+                  <Bar key={b} label={b[0].toUpperCase() + b.slice(1)} value={m.bloom_levels?.[b] ?? 0} max={bloomMax} tone="ok" />
+                ))}
+              </div>
+              <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-line pt-4 text-sm">
+                <div>
+                  <dt className="text-muted" title="The checker judged a different Bloom level than the one asked">Bloom mismatches</dt>
+                  <dd className="font-display text-xl font-semibold">{m.bloom_mismatches}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Short answers</dt>
+                  <dd className="font-display text-xl font-semibold">{m.short_questions}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Grades deferred</dt>
+                  <dd className="font-display text-xl font-semibold">{m.deferred_grades}</dd>
+                </div>
+              </dl>
+            </Card>
+            <Card className="lg:col-span-2">
               <h2 className="text-lg font-semibold">Top rejection reasons</h2>
               {m.top_reasons.length === 0 ? (
                 <p className="mt-3 text-sm text-muted">No question has been rejected yet.</p>

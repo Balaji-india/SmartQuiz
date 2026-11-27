@@ -84,6 +84,7 @@ function Textbook() {
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [starting, setStarting] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [withShort, setWithShort] = useState(true); // SPEC 9.7: 2 of the 10 questions are short answers
   const [actionError, setActionError] = useState<string | null>(null);
 
   // ?section=<id> (from chat "nearest sections") opens and scrolls to that section.
@@ -109,7 +110,7 @@ function Textbook() {
     setStarting(true);
     setActionError(null);
     try {
-      const quiz = await createQuiz(id, 10, 600);
+      const quiz = await createQuiz(id, 10, 600, "practice", withShort ? 2 : 0);
       router.push(`/quiz/${quiz.id}`);
     } catch (e) {
       setActionError((e as Error).message);
@@ -173,11 +174,21 @@ function Textbook() {
         </div>
       </NavyPanel>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button onClick={start} disabled={starting}>
           {starting ? "Creating quiz…" : "Start quiz · 10 questions, 10 min"}
         </Button>
-        <ButtonLink href={`/documents/${id}/chat`} variant="secondary">
+        <label className="flex min-h-11 items-center gap-2 text-sm text-muted">
+          <input type="checkbox" checked={withShort} onChange={(e) => setWithShort(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
+          2 short answers
+        </label>
+        <ButtonLink href={`/documents/${id}/mastery`} variant="secondary">
+          Mastery
+        </ButtonLink>
+        <ButtonLink href={`/documents/${id}/review`} variant="secondary">
+          Review
+        </ButtonLink>
+        <ButtonLink href={`/documents/${id}/chat`} variant="ghost">
           Ask a doubt
         </ButtonLink>
         <ButtonLink href={`/documents/${id}/metrics`} variant="ghost">

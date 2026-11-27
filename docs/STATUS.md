@@ -622,3 +622,20 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - A send whose receipt times out may still land: for an anchor that leaves an orphan batch on chain (harmless; the retry anchors a new one); a mint could land without a DB row (the learner could claim again and get a second token). Not seen on Amoy.
   - Revoking a document does not block new quizzes on it yet; it blocks badge claims and co-signing.
   - No commits made: Deepesh commits and pushes.
+
+## R09 — Web learning screens (2026-11-27)
+- **Done:**
+  - `lib/types.ts`: `User` adds `role` and `wallet_address`. `lib/api.ts`: `getMastery`, `getRevision`, `createRevision`, `getReviewSummary`; `createQuiz(…, mode, num_short)`; `ApiError.body` keeps the parsed error body (the review 409's `next_due`).
+  - `components/facts.tsx`: `factIndex(sections)` and `FactChips` (F-numbered chips; a click shows the fact's text, page and section).
+  - `/documents/[id]/mastery`: status tiles, concepts grouped weak → learning → untested → mastered (section, answered count, mastery bar, Source chips), "Revise" per weak or learning concept and "Generate notes for my 3 weakest concepts"; notes show every sentence with its cited fact chips and the Gate 1 dropped count. Mastered concepts show a disabled "Claim badge" (enabled in R10), or "Badge minted" when `badge_id` is set.
+  - `/documents/[id]/review`: due now / next due / cards; "Start review quiz" (up to 10 due facts, optional 1 short answer); the "Nothing due" 409 shows the next due time.
+  - `/quiz/[id]`: short-answer textarea (500 chars, counter, saved per tab; empty → null); results show the misconception and cited fact for the wrong choice picked, the other choices' misconceptions behind "Why the other choices are wrong", short answers with answer, model answer, verdict, confidence, grader and "Graded against" chips, "Waiting for educator" for deferred grades with "+N pending" under the score and "Check grading again" (reloads via `GET /attempts/{id}`). Sources stay hidden until submit (unchanged).
+  - Document page: Mastery and Review buttons, "2 short answers" checkbox (on) for Start quiz; "New quiz" on the results also asks for 2 short answers.
+  - Metrics page: Bloom levels card (accepted per level, mismatches, short answers, deferred grades) for demo step 7.
+  - No API change. Real dev-DB shapes for mastery, revision, review, attempt results and `/auth/me` were checked against `lib/types.ts`.
+- **How to run:** `./scripts/dev.sh db`, `./scripts/dev.sh api`, `./scripts/dev.sh web`, then open http://localhost:3000.
+- **Test result:** `npm run build` OK (Next 16.4.4 stopped the first run with its security notice, as before; the rerun built all 13 routes), `npm run lint` clean. pytest 354 passed + 15 chain skips without a Hardhat node (369 with one, as in R08).
+- **Open issues:**
+  - "Claim badge" stays disabled until R10 (profile + educator screens).
+  - Next.js 16.4.4 shows a security advisory on build; upgrading Next is a separate task for the team.
+  - The review quiz time limit is 1 min per question (min 2 min); the practice quiz stays 10 questions / 10 min.
