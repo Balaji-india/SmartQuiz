@@ -555,3 +555,36 @@ Every slash command appends an entry here. `/status` adds a summary block under 
   - No web screen yet (R09 adds the text inputs and grade display); the educator endpoints come in R08.
   - The dev DB now holds the R06 stats user, quiz and attempt.
   - No commits made: Deepesh commits and pushes.
+
+## R07 — SmartQuizCredentials.sol: result anchoring, ERC-5192 badges, EIP-712 co-sign and revocation (2026-11-27)
+- **Done:**
+  - `contracts/contracts/SmartQuizCredentials.sol` per SPEC 9.8 (details as built are under 9.8): Ownable + ERC721 ("SmartQuiz Concept Badge", "SQB") + EIP712 ("SmartQuizCredentials", "1"), ECDSA, MerkleProof. The registry is unchanged; the new contract reads its `getDocument` for co-signing.
+    - Educators: add/remove (onlyOwner). Result batches: `anchorResults` (BatchExists), `verifyResult` (UnknownBatch), `getBatch`.
+    - Badges: soulbound (every transfer, safe transfer and approval reverts `Soulbound`), `Locked` on mint, `locked()` true, ERC-5192 interface `0xb45a3c0e`, `getBadge`, revoked badges kept and marked. `tokenURI` is base64 JSON with the name and hex hashes only.
+    - `revokeBadge`, `coSignDocument` (factRoot must equal the registry's, else `RootMismatch`) and `revokeDocument` take an EIP-712 educator signature; the issuer sends the tx. No payable, no upgradeability, no text on chain.
+  - `contracts/scripts/deploy-credentials.ts`: owner = issuer, registry = REGISTRY_ADDRESS, `addEducator(address of EDUCATOR_PRIVATE_KEY)`. On Amoy it prints the issuer balance and the worst-case cost first and sends nothing if the balance is short; both txs use `amoyFees()` (tip ≥ 30 gwei). It writes CREDENTIALS_ADDRESS to `.env` only for `--network amoy`. On localhost it funds the issuer and deploys a throwaway registry when REGISTRY_ADDRESS has no code there.
+  - `contracts/scripts/env.ts`: shared `.env` helpers; `deploy.ts` now uses `writeEnvLine` (same behaviour).
+  - `contracts/hardhat.config.ts`: `evmVersion: "cancun"`, needed because OpenZeppelin 5.6 ERC721 → Strings uses `mcopy`. The deployed registry is untouched; only the local build changed.
+  - Python: `app/chain/credentials.py` (attempt_hash per SPEC 9.9, batch_chain_id, concept_hash, evidence_hash, reason_hash, EIP-712 `sign`/`recover` with `eth_account`) and `merkle.result_leaf`. They are ready for R08. ABI copied to `app/chain/abi/SmartQuizCredentials.json`.
+  - Cross-check: `api/scripts/credentials_fixture.py` writes `contracts/test/fixtures/credentials.json`: 5 attempt hashes (one leaf promoted), their result leaves, root and proofs, the concept and evidence hashes, and EIP-712 CoSign / RevokeBadge / RevokeDocument signatures by a test-only educator key plus one by a non-educator. The test deploys from the fixture's fresh test-only deployer, so the contract address (and the EIP-712 domain) is the one Python predicted.
+  - `.env`: added a new testnet-only `EDUCATOR_PRIVATE_KEY` (generated locally, never printed); `CREDENTIALS_ADDRESS` written by the Amoy deploy. `.env.example` already had both keys.
+- **Deployed (Amoy, chain id 80002):**
+  - **CREDENTIALS_ADDRESS = `0xe1B32EAfa2673E775bcdFB67F4816aF90DA40f4E`**, owner = issuer `0x6fa045726eF3F0d84eb100e159517930C249b665`, registry `0x4093F5F19Eacf69Fc8144A1d39A3f6838D4dc518`.
+  - **Educator address = `0x6C25595bbcdE46DF391bE795fA6D558Eb7bF8B57`** (`isEducator` true on chain; the wallet needs no POL).
+  - Deploy tx https://amoy.polygonscan.com/tx/0xe436f3ae5ae7239e37c4395f7346d29808d39d2118611ee0566d3b9cce3a724c (4,243,690 gas, 0.2546 POL); addEducator tx https://amoy.polygonscan.com/tx/0xf09f5c4564c1daa796159be9143aa3a9ee530e52b32d4143b6f7b55831f38ca8 (54,410 gas, 0.0033 POL). Issuer balance 1.0 → 0.742 POL.
+  - Read back from Amoy: owner, registry, `isEducator`, `supportsInterface(0xb45a3c0e)` all as expected.
+  - Local node first: deployed with `.env` unchanged (checksum checked), then web3.py co-signed a registered document with a signature made in Python from the real `.env` educator key, and `getCoSign` returned the educator.
+- **How to run:**
+  - Contract tests: `cd contracts && npx hardhat test`
+  - Regenerate the fixture after changing credentials.py or merkle.py: `cd api && PYTHONUTF8=1 .venv/bin/python scripts/credentials_fixture.py` (a pytest fails if it is stale)
+  - Local deploy: `cd contracts && npx hardhat node`, then `npx hardhat run scripts/deploy-credentials.ts --network localhost`
+  - Amoy deploy (already done; rerunning deploys a second contract and rewrites CREDENTIALS_ADDRESS): `npx hardhat run scripts/deploy-credentials.ts --network amoy`
+- **Test result:**
+  - Hardhat **46 passing**: 33 new for SmartQuizCredentials (educators and onlyOwner, typehashes, no payable, anchor + duplicate, verifyResult true/false/UnknownBatch, mint emits BadgeMinted + Locked, locked/getBadge/tokenURI UnknownToken, interface ids, every transfer and approval path Soulbound even for holder and owner, tokenURI hashes only, revokeBadge valid / non-educator / wrong values / removed educator / replay AlreadyRevoked / UnknownToken / non-owner, coSign matching / mismatching / unregistered / non-educator / foreign domain, revokeDocument with replay and a CoSign signature reused, and the Python fixture block: predicted addresses, hashes recomputed in TypeScript, every Python proof on chain, tampered attempt false, Python signatures accepted, stranger rejected) plus the 13 registry tests unchanged.
+  - pytest **341 passed** with a local Hardhat node (8 new in `tests/test_credentials_hash.py`: fixture not stale, attempt_hash canonical and tamper-evident, result leaves, evidence sorting and errors, concept/reason hashes, EIP-712 sign/recover per type and domain).
+- **Open issues:**
+  - Deploy gas is high (4.24M) because the optimizer is off; mint, anchor and revoke calls are small. Turning on the optimizer would change the registry's local bytecode too, so it was left off.
+  - The fixture keys are test-only keys derived from public labels and are committed on purpose; they must never be funded or used on Amoy.
+  - `coSignDocument` allows a re-co-sign (latest kept). R08 can refuse a second co-sign in the API if wanted.
+  - The ChainService does not call the new contract yet; R08 adds that (Settings also need CREDENTIALS_ADDRESS, EDUCATOR_PRIVATE_KEY and CUSTODY_SECRET).
+  - No commits made: Deepesh commits and pushes.

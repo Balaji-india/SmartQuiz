@@ -383,6 +383,23 @@ function isDocumentRevoked(bytes32 docId) external view returns (bool);
 - `deploy-credentials.ts`: owner = issuer, registry = REGISTRY_ADDRESS, `addEducator(address of EDUCATOR_PRIVATE_KEY)`,
   writes CREDENTIALS_ADDRESS to `.env` only for `--network amoy` (same rules as section 6).
 
+**Details (R07, as built):**
+- Errors take arguments: `NotEducator(address signer)`, `BatchExists(bytes32)`, `UnknownBatch(bytes32)`, `Soulbound()`,
+  `RootMismatch(bytes32 registryRoot, bytes32 given)`, `AlreadyRevoked()` (badge or document), `UnknownToken(uint256)`.
+- `verifyResult` reverts `UnknownBatch` for a batch that was never anchored; `getBatch` returns zeros for it.
+- `locked`, `getBadge` and `tokenURI` revert `UnknownToken`. Token ids start at 1. `approve` and `setApprovalForAll`
+  revert `Soulbound` too (no approval could ever be used).
+- `coSignDocument` reverts `RootMismatch` also for an unregistered document (registry root 0). A document may be co-signed
+  again (the latest co-sign is kept); `revokeDocument` does not require the document to be registered.
+- Events: `EducatorAdded`, `EducatorRemoved`, `ResultsAnchored(batchId, root, count)`, `BadgeMinted(tokenId, to, docId,
+  conceptHash, evidenceHash)`, `Locked(tokenId)`, `BadgeRevoked(tokenId, reasonHash, educator)`,
+  `DocumentCoSigned(docId, factRoot, educator)`, `DocumentRevoked(docId, reasonHash, educator)`.
+- `domainSeparator()` view for off-chain signers. `tokenURI` JSON keys: `name` ("SmartQuiz Concept Badge #<id>"),
+  `doc_id`, `concept_hash`, `evidence_hash` (0x hex) and `revoked` (bool).
+- Compiled with `evmVersion: "cancun"` (OpenZeppelin 5.6 `Strings` uses `mcopy`); Amoy supports Cancun.
+- Python side: `app/chain/credentials.py` (attempt_hash, batch_chain_id, concept_hash, evidence_hash, reason_hash,
+  EIP-712 `sign` / `recover`) and `merkle.result_leaf`; ABI in `app/chain/abi/SmartQuizCredentials.json`.
+
 ### 9.9 R08 — Credentials API
 DB: `users.role` (`learner`/`educator`, default learner; set by `api/scripts/make_educator.py <email>`),
 `users.wallet_address` null; `attempts.attempt_hash`, `attempts.attempt_salt`, `attempts.batch_id` null;

@@ -8,7 +8,8 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const issuerKey = process.env.ISSUER_PRIVATE_KEY?.trim();
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.28",
+  // cancun: OpenZeppelin 5.6 ERC721 -> Strings uses mcopy. Amoy supports Cancun (Napoli upgrade).
+  solidity: { version: "0.8.28", settings: { evmVersion: "cancun" } },
   networks: {
     amoy: {
       url: process.env.AMOY_RPC_URL || "https://polygon-amoy-bor-rpc.publicnode.com",

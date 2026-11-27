@@ -63,3 +63,10 @@ def verify(root: str, leaf: str, proof: list[str]) -> bool:
     for sibling in proof:
         node = _parent(node, _b(sibling))
     return _h(node) == root.lower()
+
+
+def result_leaf(attempt_hash: str) -> str:
+    """Result-batch leaf (SPEC 9.9): keccak256(bytes.concat(keccak256(abi.encode(bytes32 attempt_hash)))).
+    The tree, proofs and verify are the same as for facts (build_tree / proof / verify)."""
+    inner = keccak(encode(["bytes32"], [_b(attempt_hash)]))
+    return _h(keccak(inner))
